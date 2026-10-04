@@ -1,6 +1,6 @@
 # ADR-0004: Hybrid conversation engine (rules and state machine, then LLM with tools)
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0005](0005-menu-driven-conversation.md)
 - **Date:** 2026-10-03
 
 ## Context

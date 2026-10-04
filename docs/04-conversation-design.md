@@ -1,83 +1,107 @@
 # 4. Conversation Design
 
-## 4.1 Principle: deterministic where it matters, LLM where it helps
+> Updated after scoping: **Spanish only, menu-driven.** The bot always offers options and the customer answers by tapping one. See [ADR-0005](adr/0005-menu-driven-conversation.md).
 
-| Concern | Handled by | Why |
+## 4.1 Principle: guided conversation
+
+The customer never has to guess what to type. Every bot message ends with tappable options that fit the current context. This gives us:
+
+- Predictable, testable flows (a finite state machine, no hallucination risk)
+- Zero LLM cost and fast replies
+- Content that comes straight from the database (products, prices, sizes, stock)
+
+Free text is still possible, so it is handled gracefully (see 4.5).
+
+## 4.2 WhatsApp interactive message limits (drive the design)
+
+| Type | Limit | Use for |
 |---|---|---|
-| Prices, stock, order status | **Database via tools** | The model must never invent facts |
-| Checkout, address, payment | **State machine** | Predictable, auditable, testable |
-| Understanding free text, tone, ES/EN | **LLM with tool calling** | Natural, flexible |
-| Greetings, menu, opt-out, "human" | **Rules (regex/keywords)** | Cheap, instant, no LLM needed |
+| **Reply buttons** | max **3** buttons, title max 20 chars | Short choices (Yes / No / Back) |
+| **List message** | max **10** rows total, row title max 24 chars, one button opens it | Menus, categories, products |
+| **Body text** | max 1024 chars | Answers |
+| **Button/row id** | max 200 chars | Carries the navigation target, e.g. `menu:catalog` |
 
-Processing order: **rules, then active flow, then LLM agent, then fallback or handoff.**
+Rule: a list holds at most 10 rows, so **reserve 1 to 2 rows for navigation** ("Volver", "Menú principal"). Long catalogs are paginated ("Ver más").
 
-## 4.2 Intents
+## 4.3 Menu tree (draft, texts in Spanish)
 
-| Intent | Example | Handler |
-|---|---|---|
-| `greeting` | "hola" | Rule: welcome and menu |
-| `browse_catalog` | "what shirts do you have?" | LLM tool: `search_products` |
-| `product_detail` | "tell me about the black oversize" | LLM tool: `get_product` |
-| `check_stock` | "do you have M in white?" | LLM tool: `check_stock` |
-| `shipping_info` | "how much is shipping to Lima?" | FAQ and `quote_shipping` |
-| `order_status` | "where is order #1042?" | Tool: `get_order_status` (phone must match) |
-| `start_purchase` | "I want 2 of those" | Enters the checkout flow |
-| `human_request` | "talk to a person" | Rule: handoff |
-| `opt_out` | "STOP" | Rule: unsubscribe |
-| `out_of_scope` | "who won the game?" | Polite redirect |
+```
+Hola 👋 Bienvenido a <Tienda>. ¿En qué te puedo ayudar?   [List]
+├── 👕 Ver catálogo
+│   ├── Categoría (Básicas / Estampadas / Oversize ...)     [List, from DB]
+│   │   └── Producto                                         [List, paginated]
+│   │       └── Detalle: precio, material, foto
+│   │           ├── Ver tallas y colores
+│   │           │   └── Talla -> Color -> disponibilidad     [Buttons/List]
+│   │           └── Volver | Menú principal
+├── 📏 Guía de tallas                                         [Text + image]
+├── 🚚 Envíos                                                 [Zones/costs/times, from DB or FAQ]
+├── 💳 Formas de pago                                         [Text]
+├── 🔁 Cambios y devoluciones                                 [Text]
+├── 🕒 Horarios y ubicación                                   [Text]
+├── 📦 Estado de mi pedido                                    [Asks order number (free text) -> lookup]
+└── 📞 Contáctanos                                            [Text: phone, wa.me link, hours]
+```
 
-## 4.3 Conversation state machine
+Every leaf ends with: **[Volver] [Menú principal] [Contáctanos]**.
+
+The "Estado de mi pedido" option is the one place where free text is expected (the order number). It is optional in the MVP and needs the order data to come from somewhere (see doc 07).
+
+## 4.4 State model
+
+State is stored per conversation: a **current node** in the menu tree plus a small context (selected category, product, size, page, navigation stack).
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Idle
-    Idle --> Browsing: product question
-    Browsing --> Browsing: follow-up
-    Browsing --> CartBuilding: wants to buy
-    CartBuilding --> CollectingAddress: cart confirmed
-    CollectingAddress --> AwaitingPayment: address confirmed
-    AwaitingPayment --> Completed: payment webhook
-    AwaitingPayment --> Idle: timeout
-    Idle --> HumanHandoff: human requested
-    Browsing --> HumanHandoff: low confidence
-    CartBuilding --> HumanHandoff: low confidence
-    HumanHandoff --> Idle: owner resumes
-    Completed --> Idle
+    [*] --> MainMenu: any first message
+    MainMenu --> Catalog
+    Catalog --> Category
+    Category --> Product
+    Product --> Variants
+    MainMenu --> FAQ: sizes / shipping / payment / returns / hours
+    MainMenu --> OrderStatus
+    OrderStatus --> OrderStatus: waiting for order number
+    MainMenu --> Contact: contact us
+    Catalog --> MainMenu: back / main menu
+    Contact --> MainMenu: back
 ```
 
-State is persisted per conversation, so a restart or a new worker never loses context.
+Design choice: **button ids encode the target node** (for example `cat:12`, `prod:88`, `nav:back`). The engine can resolve a tap even if stored state is stale or lost, so conversations survive restarts and old messages still work.
 
-## 4.4 LLM agent design
+Menu structure is **declarative** (a node registry: id, title, children, handler) and not hard-coded in if/else chains. Adding a menu option means adding a node.
 
-- **Tool calling**, not RAG over the whole catalog. Tools: `search_products`, `get_product`, `check_stock`, `get_order_status`, `get_faq`, `request_handoff`.
-- **System prompt** defines the persona (store name, tone, language rule), hard rules (only state facts returned by tools, never promise discounts) and the output format.
-- **Context window:** last N messages and a short conversation summary, not the full history.
-- **Model routing:** a small, fast model for classification and simple answers, a larger one only for complex cases. Spend is capped per conversation and per day.
-- **Provider:** Claude through the Anthropic SDK, behind the `LLMClient` port.
+## 4.5 Handling text that is not a tap
 
-## 4.5 Guardrails
+| Situation | Behavior |
+|---|---|
+| Greeting ("hola", "buenas") | Show the main menu |
+| Matches a simple keyword ("envíos", "tallas", "precio", "humano", "menú") | Jump to that node (light keyword/fuzzy matching) |
+| Order number while in OrderStatus | Process it |
+| Anything else | "No te entendí 😅 Elige una opción:" and re-show the **current** menu |
+| 2 consecutive failures | Offer **Contáctanos** |
+| Unsupported type (audio, sticker, location) | Polite message and the menu |
 
-- **Grounding:** price or stock statements must come from a tool result in the same turn (verified in code, with a post-check).
-- **Prompt injection:** user text is treated as untrusted data. Tools are read-only except in explicit flows. No tool can reveal other customers' data.
-- **Order privacy:** `get_order_status` checks that the order belongs to the sender's phone number.
-- **Max turns and cost:** hard limit on tool-loop iterations.
-- **Fallback:** on LLM timeout or error, send a safe canned reply and offer a human.
-- **Handoff triggers:** an explicit request, anger or complaint, 2 consecutive failed understandings, refund or legal topics.
+No LLM is required for any of this. If wanted later, an LLM could be added as an optional fallback node (see roadmap, phase 7).
 
-## 4.6 WhatsApp-specific rules
+## 4.6 Contact us (no handoff mode)
 
-- Reply within the 24h service window. Outside it, only approved **template messages**.
-- Keep replies short. Use **buttons and list messages** for choices (max 3 buttons, 10 list rows).
-- Mark inbound messages as read and show a typing indicator while the LLM works.
-- Support text and images in the MVP. Other types (audio, location) get a polite "I can't read that yet", and voice transcription is planned later.
-- Store consent. Marketing templates go only to opted-in customers.
+There is no live human takeover. "Contáctanos" (also triggered by keywords such as "asesor", "persona", "humano", "llamar") replies with:
 
-## 4.7 Evaluation
+- The store's contact number and a click-to-chat link (`https://wa.me/51XXXXXXXXX`)
+- Opening hours
+- Buttons: [Menú principal]
 
-A golden set of about 100 labeled conversations (ES/EN) runs in CI:
-- intent accuracy
-- factual grounding (answer matches seeded catalog)
-- handoff precision and recall
-- cost per conversation
+Contact number, link and hours come from configuration/content, not code. The bot keeps working normally afterwards, so there is no state to pause or resume. See [ADR-0006](adr/0006-contact-us-instead-of-handoff.md).
 
-LLM calls are mocked in unit tests, with a small nightly run against the real API.
+## 4.7 WhatsApp-specific rules
+
+- Replies are free within the **24h service window** after the customer's last message. Since this bot only reacts to customers, we stay inside it. Proactive messages need approved templates and are out of the MVP.
+- Mark inbound messages as read; send replies in order.
+- Messages are short, with emojis used sparingly and consistently.
+- The first message of a new session is always the main menu.
+
+## 4.8 Testing the conversation
+
+- Unit tests per node: given (state, input) assert (next state, reply payload).
+- A **path-coverage test** walks the whole menu tree from the seeded catalog and verifies that no node is a dead end, no list exceeds 10 rows and no title exceeds its character limit.
+- Golden transcripts (recorded sample conversations) as regression tests.

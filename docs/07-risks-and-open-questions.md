@@ -1,34 +1,42 @@
 # 7. Risks and Open Questions
 
-## 7.1 Open questions (need your answers before Phase 1)
+## 7.1 Decisions made
 
-| # | Question | Why it matters |
+| # | Question | Answer |
 |---|---|---|
-| Q1 | **Languages:** Spanish only, or Spanish and English? | Prompts, FAQ content, evaluation set |
-| Q2 | **Is the store real?** Do you have a real catalog (and where does it live: Shopify, Excel, nothing)? | Decides whether we integrate an existing source or own the catalog DB |
-| Q3 | **Meta setup:** do you already have a Meta Business account and a WhatsApp test number? | The sandbox number is enough for dev; production needs business verification |
-| Q4 | **Scope of the MVP:** answers only, or also taking orders and payments? | Phase 6 is big |
-| Q5 | **Payments:** which provider and country (Stripe, Mercado Pago, others)? | Adapter choice, currency |
-| Q6 | **LLM budget:** is there an acceptable monthly cost? | Model routing and caps |
-| Q7 | **Hosting:** any preference or free-tier constraint? | Deployment target |
-| Q8 | **Repo visibility:** public portfolio repo? | Synthetic demo data only, no real customer data or secrets |
-| Q9 | **Owner handoff channel:** the owner's own WhatsApp, email, or a small web inbox? | Notifier adapter |
+| Q1 | Languages | **Spanish only** |
+| Q4 | MVP scope | **Chat only, menu-driven, no orders or payments** (see ADR-0005) |
+| Q2 | Catalog | **Not available yet**, so we use a synthetic seed catalog. The DB is the source of truth for now |
+| Q9 | Human contact | **No handoff.** The bot replies with the store's contact number / link (ADR-0006) |
+| Q10 | Store name | **Tee Concierge** (tone of voice and FAQ content still to be written) |
+| Q12 | Country and currency | **Peru, PEN (soles)**. Prices shown as `S/ 59.90`; shipping copy for Lima and provinces |
+| Q8 | Repo | Already created, so we treat it as a public portfolio repo: synthetic data only, no secrets |
 
-## 7.2 Risks
+## 7.2 Still open (none block Phase 1)
+
+| # | Question | Needed by |
+|---|---|---|
+| Q3 | Meta Business account and WhatsApp test number: created yet? | Phase 2 |
+| Q7 | Hosting preference or free-tier constraints | Phase 7 |
+| Q13 | The real contact number and opening hours | Phase 5 |
+| Q10b | Tone of voice and real FAQ content (shipping zones and costs, return policy, hours, payment methods such as Yape/Plin/transfer) | Phase 4 |
+| Q11 | Order status: where would order data come from, given there is no catalog or order system yet? | Stretch |
+
+## 7.3 Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| LLM states a wrong price or stock | Lost trust, wrong sales | Tool-only facts, post-check grounding, golden-set tests |
-| Meta policy limits (24h window, template approval, business verification delays) | Features blocked | Design around the window early; start verification now |
+| Menu too deep or too long for WhatsApp limits (3 buttons, 10 rows) | Poor UX | Declarative tree, pagination, automated limit checks in tests |
+| Customers type free text and get stuck | Frustration | Keyword shortcuts, fallback re-shows the menu, offer "Contáctanos" after 2 failures |
+| Meta policy limits (24h window, business verification delays) | Features blocked | Bot is reactive only, so it stays in the window; start verification early |
 | Duplicate or out-of-order webhooks | Double replies, corrupted state | Unique `wamid`, per-conversation lock |
-| Prompt injection or data leak | Privacy breach | Read-only tools, ownership checks, untrusted-input handling |
-| Runaway LLM cost | Bill shock | Per-phone rate limit, daily cap, small-model routing |
+| Stale interactive messages (customer taps an old menu) | Wrong state | Button ids encode the target node, so routing needs no stored state |
+| Public repo with real data | Privacy | Synthetic data only, secrets in env, `.env.example` |
 | Scope creep | Never finished | Strict phases, each demoable |
-| Handling real customer PII in a public repo | Legal | Fake data in repo, secrets in env, retention policy |
-| Unofficial WhatsApp libraries | Number ban | Official Cloud API only (see ADR-0001) |
+| Unofficial WhatsApp libraries | Number ban | Official Cloud API only (ADR-0001) |
 
-## 7.3 Assumptions
+## 7.4 Assumptions
 
-- One store, one WhatsApp number, one owner (multi-tenant is out of scope for v1).
-- Meta Cloud API access can be obtained.
-- Catalog is small (under 500 variants), so plain SQL search is enough for the MVP.
+- One store, one WhatsApp number, one owner (multi-tenant is out of scope).
+- Catalog is small (under 500 variants), so plain SQL queries are enough.
+- Customers use a recent WhatsApp client that renders interactive messages.

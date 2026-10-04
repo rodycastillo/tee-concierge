@@ -2,7 +2,7 @@
 
 ## 2.1 Architectural style
 
-**Hexagonal (ports and adapters) with a thin CQRS-flavored application layer.** The business logic does not know about WhatsApp, the database or the LLM. Those are adapters behind ports, which makes everything testable and swappable (for example Twilio instead of Meta Cloud API).
+**Hexagonal (ports and adapters) with a thin CQRS-flavored application layer.** The business logic does not know about WhatsApp, the database or any other provider. Those are adapters behind ports, which makes everything testable and swappable (for example Twilio instead of Meta Cloud API).
 
 ## 2.2 System context
 
@@ -13,8 +13,6 @@ flowchart LR
     A -- send message --> M
     A <--> DB[(PostgreSQL)]
     A <--> R[(Redis)]
-    A <--> L[LLM provider<br/>Claude API]
-    A <--> P[Payment provider]
     O[Store owner] <--> A
     O <--> M
 ```
@@ -34,12 +32,11 @@ flowchart TB
     W -->|enqueue| RQ[(Redis queue)]
     RQ --> Q --> ENG
     ENG --> DB[(Postgres)]
-    ENG --> LLM[LLM adapter]
     ENG --> WA[WhatsApp adapter]
     ADM --> DB
 ```
 
-Key decision: the **webhook only verifies, stores and enqueues**, then returns 200 right away. Meta retries on slow responses, so heavy work (LLM calls, DB reads) happens in a worker. See [ADR-0003](adr/0003-async-webhook-processing.md).
+Key decision: the **webhook only verifies, stores and enqueues**, then returns 200 right away. Meta retries on slow responses, so heavy work (DB reads, replies) happens in a worker. See [ADR-0003](adr/0003-async-webhook-processing.md).
 
 ## 2.4 Layers
 
@@ -47,7 +44,7 @@ Key decision: the **webhook only verifies, stores and enqueues**, then returns 2
 interfaces/      FastAPI routers, request/response schemas, auth     -> depends on application
 application/     Use cases, conversation engine, DTOs               -> depends on domain
 domain/          Entities, value objects, domain services, ports    -> depends on nothing
-infrastructure/  Adapters: Postgres, Redis, WhatsApp, LLM, payments -> implements domain ports
+infrastructure/  Adapters: Postgres, Redis, WhatsApp, notifications -> implements domain ports
 ```
 
 Dependency rule: arrows point inward only. Enforced in CI with `import-linter`.
@@ -62,7 +59,6 @@ sequenceDiagram
     participant W as Worker
     participant E as Engine
     participant DB
-    participant LLM
     Meta->>API: POST /webhook (signed)
     API->>API: verify signature
     API->>DB: insert inbound msg (unique wamid)
@@ -71,14 +67,8 @@ sequenceDiagram
     Q->>W: deliver
     W->>E: handle(message)
     E->>DB: load conversation + state
-    alt rule/flow match
-        E->>DB: query catalog/orders
-    else free text
-        E->>LLM: tool-calling request
-        LLM->>E: tool calls (search_products, get_stock...)
-        E->>DB: execute tools
-        E->>LLM: tool results
-    end
+    E->>E: resolve node from button id or text
+    E->>DB: query catalog / FAQ
     E->>DB: persist state + outbound msg
     E->>Meta: send reply
 ```
@@ -92,8 +82,8 @@ sequenceDiagram
 | **Retries** | Exponential backoff with jitter; DLQ after N failures; outbound sends are idempotent via a stored status |
 | **Config** | `pydantic-settings`, 12-factor, no secrets in the repo |
 | **Logging** | `structlog` JSON, correlation id = wamid; phone numbers hashed or masked |
-| **Metrics** | Prometheus: webhook latency, queue depth, LLM latency and tokens, handoff rate |
-| **Tracing** | OpenTelemetry across webhook, worker, LLM and DB |
+| **Metrics** | Prometheus: webhook latency, queue depth, reply latency, menu node usage, "Contáctanos" taps |
+| **Tracing** | OpenTelemetry across webhook, worker and DB |
 | **Rate limiting** | Per-phone token bucket in Redis to stop abuse and runaway cost |
 | **AuthN/Z** | Admin API: JWT or API key; webhook: HMAC signature |
 
@@ -113,17 +103,15 @@ src/tee_concierge/
 │   ├── customers/      Customer, PhoneNumber, Consent
 │   ├── conversations/  Conversation, Message, ConversationState
 │   ├── orders/         Cart, Order, OrderStatus
-│   └── ports/          ProductRepository, MessageGateway, LLMClient, ...
+│   └── ports/          ProductRepository, MessageGateway, ConversationRepository, ...
 ├── application/
-│   ├── engine/         Router, intent classifier, state machine, tool registry
-│   ├── use_cases/      SearchProducts, CheckStock, GetOrderStatus, HandoffToHuman, ...
+│   ├── engine/         Menu node registry, router, state machine, renderers
+│   ├── use_cases/      ListCategories, ListProducts, GetVariantAvailability, GetFaq, GetContactInfo, ...
 │   └── dto.py
 ├── infrastructure/
 │   ├── whatsapp/       Cloud API client, payload parsers, fake gateway
 │   ├── persistence/    SQLAlchemy models, repositories, Alembic
-│   ├── llm/            Claude adapter, prompt templates
 │   ├── queue/          Redis queue
-│   └── payments/
 ├── interfaces/
 │   ├── webhook/        Verify + ingest
 │   └── admin/          REST API

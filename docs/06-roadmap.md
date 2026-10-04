@@ -2,8 +2,8 @@
 
 Each phase ends with something demoable, and every phase keeps CI green.
 
-## Phase 0: Analysis and design (current)
-- Docs, ADRs, scope. **Done when** the open questions in doc 07 are answered.
+## Phase 0: Analysis and design (done)
+- Docs, ADRs and scope. Decisions: Spanish only, menu-driven, no LLM, no orders or payments in the MVP.
 
 ## Phase 1: Foundation
 - Repo scaffold: `pyproject.toml`, uv, ruff, mypy, pre-commit, import-linter, Makefile
@@ -14,35 +14,36 @@ Each phase ends with something demoable, and every phase keeps CI green.
 
 ## Phase 2: Messaging core
 - Webhook verification and signature check
-- Inbound parsing, persistence with unique `wamid`, enqueue, worker
-- WhatsApp outbound adapter and **fake gateway + CLI chat**
+- Inbound parsing, persistence with unique `wamid`, enqueue, worker with per-conversation lock
+- WhatsApp outbound adapter (text, buttons, list) and a **fake gateway with a CLI chat**
 - Echo bot end to end
-- **Done when** a duplicated webhook is processed once (integration test) and the bot can echo through the real test number.
+- **Done when** a duplicated webhook is processed once (integration test) and the bot can reply through the real test number.
 
-## Phase 3: Catalog and FAQ
-- Domain model, migrations, seed script
-- Use cases: search products, product detail, stock
-- Rule-based router and FAQ answers, ES/EN
-- Buttons and list messages
-- **Done when** the customer can browse and ask about size, price and stock with no LLM.
+## Phase 3: Conversation engine
+- Declarative menu node registry, state machine, button-id routing
+- Renderers that respect WhatsApp limits (3 buttons, 10 rows, pagination, char limits)
+- Main menu, navigation (Volver, Menú principal), keyword shortcuts, fallback
+- Spanish copy kept in one content module
+- **Done when** "Hola" opens the menu and the whole static tree is navigable, with the path-coverage test passing.
 
-## Phase 4: LLM agent
-- `LLMClient` port and Claude adapter, tool registry, grounding checks
-- Conversation memory and summarization, cost caps, fallback
-- Golden-set evaluation in CI
-- **Done when** free-text questions work and the evaluation set passes its thresholds.
+## Phase 4: Catalog and FAQ
+- Domain model, migrations, synthetic seed script (categories, products, sizes, colors, stock)
+- Catalog browsing nodes: category, product, detail, size and color availability, photos
+- FAQ nodes: sizes, shipping, payment, returns, hours and location, from editable content
+- **Done when** a customer can go from "Hola" to a product's stock for a size and color, using taps only.
 
-## Phase 5: Handoff and order status
-- Handoff mode, owner notification, resume
-- Order status lookup with phone ownership check
-- **Done when** the bot goes silent in HUMAN mode and resumes on command.
+## Phase 5: Contact and message tracking
+- "Contáctanos" node and keyword shortcuts (number, `wa.me` link, hours from config)
+- Message status tracking (sent, delivered, read), conversation history
+- **Done when** every menu leaf can reach "Contáctanos" and statuses are stored.
 
-## Phase 6: Checkout and payments
-- Cart, address collection, order creation, payment link, payment webhook with idempotency
-- **Done when** the full purchase flow works in the sandbox.
+## Phase 6: Admin and observability
+- Admin API (catalog, FAQ content, conversations), auth
+- Metrics, tracing, menu usage reports
+- Rate limits and security review
+- **Done when** the owner can change a product or FAQ answer without touching code.
 
-## Phase 7: Hardening and showcase
-- Admin API, metrics dashboard (Grafana), tracing
-- Load test, security review, rate limits
-- Deploy a public demo, record a GIF or video, finalize the README, architecture diagrams and a "lessons learned" section
+## Phase 7: Showcase and stretch
+- Public demo deployment, GIF or video, polished README and diagrams, "lessons learned"
+- **Stretch options (pick any):** order status lookup, cart and payment link, optional LLM fallback node, template notifications.
 - **Done when** a recruiter can understand the project in 5 minutes and try it in 1 command.

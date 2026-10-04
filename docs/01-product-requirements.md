@@ -24,27 +24,27 @@ A small T-shirt store receives repetitive WhatsApp questions all day ("do you ha
 ## 1.4 Scope
 
 ### MVP (must have)
-- Receive and reply to WhatsApp text messages
-- Catalog browsing: list products, filter by size, color, price
-- Product details: price, sizes, colors, stock, material, images
-- FAQ: shipping, returns, payment methods, store hours, location
-- Order status lookup by order number
-- Human handoff (keyword or low confidence) with owner notification
+- Spanish only
+- **Menu-driven chat:** every bot message offers tappable options (buttons / lists) that fit the context; "Hola" opens the main menu
+- Catalog browsing: categories, products, sizes, colors, price, stock, photo
+- FAQ nodes: size guide, shipping, payment methods, returns, hours and location
+- Graceful handling of free text and unsupported message types (re-show the current menu)
+- **"Contáctanos" option:** shows the store's contact number and a click-to-chat link; no handoff mode, the customer talks to the owner on the store's own channel
 - Conversation and message persistence
-- Language detection (ES/EN)
+- Demo catalog (synthetic seed data; the real catalog is not available yet)
 
 ### Next (should have)
-- Cart and order creation inside chat
-- Payment link generation (Stripe or Mercado Pago, to be decided)
-- Interactive messages (buttons, lists) and product images
-- Admin API and basic dashboard
-- Proactive templates (order shipped, cart reminder), opt-in only
+- Order status lookup by order number (needs an order data source)
+- Admin API and basic dashboard to manage catalog and FAQ content
+- Basic reports: top products, most used menu options, "Contáctanos" taps
 
 ### Later (could have)
-- Voice note transcription
-- Product recommendations from purchase history
-- Multi-tenant support
-- Analytics dashboard
+- Cart, order creation and payment link inside chat
+- Proactive templates (order shipped), opt-in only
+- Optional LLM fallback for free-text questions
+- Voice note transcription, multi-tenant support
+
+**Out of scope for the MVP:** taking orders, payments, LLM answers.
 
 ## 1.5 Functional requirements
 
@@ -52,34 +52,33 @@ A small T-shirt store receives repetitive WhatsApp questions all day ("do you ha
 |---|---|---|
 | FR-01 | Verify the Meta webhook handshake and every `X-Hub-Signature-256` | MUST |
 | FR-02 | Process each inbound message exactly once, even if Meta retries | MUST |
-| FR-03 | Answer product, price, size and stock questions from the database, never from model memory | MUST |
-| FR-04 | Answer FAQ from a curated knowledge base | MUST |
-| FR-05 | Detect handoff intent and pause the bot for that conversation | MUST |
-| FR-06 | Notify the owner on handoff (WhatsApp message to the owner, or email) | MUST |
-| FR-07 | Look up order status, only for the phone number that placed the order | MUST |
-| FR-08 | Persist all messages with timestamps and delivery status | MUST |
-| FR-09 | Build a cart and create an order through a guided flow | SHOULD |
-| FR-10 | Send a payment link and confirm payment via payment webhook | SHOULD |
-| FR-11 | Respect the 24h customer-service window; use approved templates outside it | SHOULD |
-| FR-12 | Honor STOP / opt-out for proactive messages | MUST (if proactive messages ship) |
-| FR-13 | Owner can resume the bot after a handoff | SHOULD |
+| FR-03 | Reply to any first message (e.g. "Hola") with the main menu | MUST |
+| FR-04 | Every bot reply includes options valid for the current context, and navigation (Volver, Menú principal) | MUST |
+| FR-05 | Resolve a tapped option from its id alone, even if stored state is stale | MUST |
+| FR-06 | Product, price, size and stock data come from the database | MUST |
+| FR-07 | FAQ answers come from editable content, not hard-coded strings | MUST |
+| FR-08 | Free text: keyword shortcuts, otherwise "no entendí" and the current menu again | MUST |
+| FR-09 | "Contáctanos" node shows the store's contact number / `wa.me` link (configurable) and the opening hours | MUST |
+| FR-10 | Persist all messages with timestamps and delivery status | MUST |
+| FR-11 | Respect WhatsApp list/button limits (3 buttons, 10 rows) with pagination | MUST |
+| FR-12 | Order status lookup, only for the phone number that placed the order | SHOULD |
 
 ## 1.6 Non-functional requirements
 
 | Area | Target |
 |---|---|
-| Latency | Webhook ACK < 1s (ack first, process async); reply p95 < 5s with LLM, < 1.5s rule-based |
+| Latency | Webhook ACK < 1s (ack first, process async); reply p95 < 1.5s |
 | Reliability | No lost messages: persisted before processing, retry with backoff, dead-letter queue |
 | Security | Secrets in env/secret manager, signature verification, PII minimization, rate limiting per phone |
 | Privacy | Store only what is needed, retention policy, a delete-my-data path (GDPR/LGPD-style) |
 | Observability | Structured JSON logs with correlation id, metrics, tracing on the message pipeline |
-| Cost | Cap LLM spend per conversation and per day; rules first, LLM only when needed |
+| Cost | Runs on free tiers; no per-message AI cost |
 | Maintainability | Layered architecture, 85%+ coverage on domain and application, typed (mypy strict) |
 | Portability | `docker compose up` runs everything locally with a fake WhatsApp gateway |
 
 ## 1.7 Success metrics
 
 - Containment rate: % of conversations resolved without a human
-- Correctness: % of answers matching catalog truth (evaluation set)
-- Handoff precision: handoffs that were actually needed
-- Conversion: conversations that reached an order or payment link
+- Dead-end rate: % of sessions ending on a "no entendí" loop (should trend to 0)
+- Menu usage: most visited nodes, to improve the tree
+- "Contáctanos" taps and the places they happen from

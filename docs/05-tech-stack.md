@@ -8,7 +8,7 @@
 | Database | **PostgreSQL 16** | SQLite, MongoDB | Relational integrity for orders and stock; jsonb for state; pgvector available if FAQ search is needed |
 | ORM / migrations | **SQLAlchemy 2.0 (async) + Alembic** | SQLModel, Tortoise | Industry standard, explicit mapping keeps the domain clean |
 | Queue / cache | **Redis** with **arq** | Celery, RQ, SQS | Async-native, light. Redis also serves locks and rate limits |
-| LLM | **Claude (Anthropic SDK)** | OpenAI, local models | Strong tool use; behind a port |
+| LLM | **None in the MVP** (see ADR-0005) | Claude, OpenAI | Menu-driven flow needs no model; can be added later behind a port |
 | Validation / config | **Pydantic v2, pydantic-settings** | n/a | Typed config, 12-factor |
 | HTTP client | **httpx** | aiohttp | Async, easy to mock |
 | Logging / metrics | **structlog, prometheus-client, OpenTelemetry** | n/a | Production-grade observability |
