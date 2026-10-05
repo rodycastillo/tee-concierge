@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     store_name: str = "Tee Concierge"
     store_contact_phone: str = ""
+    store_hours: str = ""
 
 
 @lru_cache

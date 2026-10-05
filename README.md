@@ -2,7 +2,7 @@
 
 A WhatsApp assistant for a T-shirt store, in Spanish. It greets customers with an interactive menu and guides them through catalog, sizes, prices, stock, shipping, payment and returns using tappable options, and shows how to contact the store when a person is needed.
 
-> **Status:** Phases 1 (foundation) and 2 (messaging core) done. Phase 3 (conversation engine) is next. See [docs/](docs/).
+> **Status:** Phases 1 (foundation), 2 (messaging core) and 3 (conversation engine) done. Phase 4 (catalog and FAQ) is next. See [docs/](docs/).
 
 ## Quick start
 
@@ -12,7 +12,7 @@ make install   # uv sync
 make check     # ruff, mypy, import-linter, pytest
 make run       # API on http://localhost:8000/health
 make up        # full stack with Docker (api, worker, postgres, redis)
-make chat      # talk to the bot in your terminal (fake WhatsApp gateway)
+make chat      # talk to the bot in your terminal; type a number to tap an option
 ```
 
 ## Why this project exists

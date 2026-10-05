@@ -19,7 +19,7 @@ Each phase ends with something demoable, and every phase keeps CI green.
 - Echo bot end to end
 - **Done when** a duplicated webhook is processed once (integration test) and the bot can reply through the real test number.
 
-## Phase 3: Conversation engine
+## Phase 3: Conversation engine (done)
 - Declarative menu node registry, state machine, button-id routing
 - Renderers that respect WhatsApp limits (3 buttons, 10 rows, pagination, char limits)
 - Main menu, navigation (Volver, Menú principal), keyword shortcuts, fallback

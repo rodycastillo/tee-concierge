@@ -16,4 +16,11 @@ async def outbox(
 ) -> list[dict[str, object]]:
     """Replies the bot produced for `phone`. Only mounted with the fake gateway."""
     replies = await repo.list_outbound(phone, after_id)
-    return [{"id": r.id, "body": r.body} for r in replies]
+    return [
+        {
+            "id": r.id,
+            "body": r.body,
+            "options": [{"id": o.id, "title": o.title} for o in r.options],
+        }
+        for r in replies
+    ]

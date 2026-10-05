@@ -2,12 +2,28 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+# WhatsApp interactive message limits (Cloud API)
+MAX_BUTTONS = 3
+MAX_LIST_ROWS = 10
+BODY_MAX = 1024
+BUTTON_TITLE_MAX = 20
+ROW_TITLE_MAX = 24
+ROW_DESCRIPTION_MAX = 72
+LIST_BUTTON_MAX = 20
+OPTION_ID_MAX = 200
+
 
 class MessageType(StrEnum):
     TEXT = "text"
     BUTTON_REPLY = "button_reply"
     LIST_REPLY = "list_reply"
     UNSUPPORTED = "unsupported"
+
+
+class ReplyKind(StrEnum):
+    TEXT = "text"
+    BUTTONS = "buttons"
+    LIST = "list"
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +40,69 @@ class InboundMessage:
 
 
 @dataclass(frozen=True, slots=True)
+class Option:
+    """A tappable choice. `id` comes back as `reply_id` when the customer taps it."""
+
+    id: str
+    title: str
+    description: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Reply:
+    """What the bot says: a body plus optional options.
+
+    No options -> plain text. Up to 3 options without descriptions -> reply
+    buttons. Otherwise -> a list message (up to 10 rows). WhatsApp's limits are
+    enforced here, so a menu that would be rejected by the API fails in tests.
+    """
+
+    body: str
+    options: tuple[Option, ...] = ()
+    list_button: str = "Ver opciones"
+
+    @property
+    def kind(self) -> ReplyKind:
+        if not self.options:
+            return ReplyKind.TEXT
+        if len(self.options) <= MAX_BUTTONS and all(o.description is None for o in self.options):
+            return ReplyKind.BUTTONS
+        return ReplyKind.LIST
+
+    def __post_init__(self) -> None:
+        if not self.body or len(self.body) > BODY_MAX:
+            raise ValueError(f"body must be 1..{BODY_MAX} chars, got {len(self.body)}")
+        if len(self.options) > MAX_LIST_ROWS:
+            raise ValueError(f"at most {MAX_LIST_ROWS} options, got {len(self.options)}")
+        if len({o.id for o in self.options}) != len(self.options):
+            raise ValueError("option ids must be unique")
+        kind = self.kind
+        title_max = BUTTON_TITLE_MAX if kind is ReplyKind.BUTTONS else ROW_TITLE_MAX
+        for option in self.options:
+            if not option.title or len(option.title) > title_max:
+                raise ValueError(f"option title {option.title!r} must be 1..{title_max} chars")
+            if len(option.id) > OPTION_ID_MAX:
+                raise ValueError(f"option id too long: {option.id!r}")
+            if option.description and len(option.description) > ROW_DESCRIPTION_MAX:
+                raise ValueError(f"option description too long: {option.description!r}")
+        if kind is ReplyKind.LIST and len(self.list_button) > LIST_BUTTON_MAX:
+            raise ValueError(f"list_button must be at most {LIST_BUTTON_MAX} chars")
+
+
+@dataclass(frozen=True, slots=True)
 class StoredReply:
     id: int
     body: str
+    options: tuple[Option, ...]
     sent_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationState:
+    """Where a customer is in the menu. Option ids carry their own target, so this
+    is only used to re-show the current menu and count misunderstandings."""
+
+    phone: str
+    node: str = "main"
+    failures: int = 0
+    updated_at: datetime | None = None

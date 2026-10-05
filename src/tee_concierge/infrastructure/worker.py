@@ -1,21 +1,28 @@
 from typing import Any
 
 import httpx
+import structlog
 from arq import Retry
 from arq.connections import RedisSettings
 from redis.asyncio import Redis
 
-from tee_concierge.application.process import EchoResponder, ProcessInboundMessage
+from tee_concierge.application.content.store import StoreInfo
+from tee_concierge.application.engine.engine import MenuEngine
+from tee_concierge.application.process import ProcessInboundMessage
 from tee_concierge.config import Settings, get_settings
 from tee_concierge.domain.ports import MessageGateway
 from tee_concierge.infrastructure.persistence.database import create_engine, create_sessionmaker
-from tee_concierge.infrastructure.persistence.repository import SqlMessageRepository
+from tee_concierge.infrastructure.persistence.repository import (
+    SqlConversationRepository,
+    SqlMessageRepository,
+)
 from tee_concierge.infrastructure.queue.lock import RedisConversationLock
 from tee_concierge.infrastructure.whatsapp.client import WhatsAppCloudGateway
 from tee_concierge.infrastructure.whatsapp.fake import FakeGateway
 from tee_concierge.logging import configure_logging
 
 MAX_TRIES = 5
+log = structlog.get_logger()
 
 
 def build_gateway(settings: Settings, http: httpx.AsyncClient) -> MessageGateway:
@@ -36,11 +43,19 @@ async def startup(ctx: dict[str, Any]) -> None:
     redis: Redis = Redis.from_url(settings.redis_url)
     http = httpx.AsyncClient(timeout=10.0)
     ctx.update(engine=engine, redis=redis, http=http)
+    sessions = create_sessionmaker(engine)
     ctx["process"] = ProcessInboundMessage(
-        repo=SqlMessageRepository(create_sessionmaker(engine)),
+        repo=SqlMessageRepository(sessions),
         gateway=build_gateway(settings, http),
         lock=RedisConversationLock(redis),
-        responder=EchoResponder(),
+        responder=MenuEngine(
+            conversations=SqlConversationRepository(sessions),
+            store=StoreInfo(
+                name=settings.store_name,
+                contact_phone=settings.store_contact_phone,
+                hours=settings.store_hours,
+            ),
+        ),
     )
 
 
@@ -54,6 +69,7 @@ async def process_inbound(ctx: dict[str, Any], wamid: str) -> None:
     try:
         await ctx["process"].execute(wamid)
     except Exception as exc:
+        log.exception("process_inbound_failed", wamid=wamid, attempt=ctx["job_try"])
         if ctx["job_try"] >= MAX_TRIES:
             raise
         raise Retry(defer=ctx["job_try"] ** 2 * 5) from exc

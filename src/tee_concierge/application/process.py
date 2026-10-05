@@ -2,23 +2,14 @@ from typing import Protocol
 
 import structlog
 
-from tee_concierge.domain.messaging import InboundMessage, MessageType
+from tee_concierge.domain.messaging import InboundMessage, Reply
 from tee_concierge.domain.ports import ConversationLock, MessageGateway, MessageRepository
 
 log = structlog.get_logger()
 
 
 class Responder(Protocol):
-    async def reply_to(self, message: InboundMessage) -> str: ...
-
-
-class EchoResponder:
-    """Phase 2 placeholder. Phase 3 replaces it with the menu engine."""
-
-    async def reply_to(self, message: InboundMessage) -> str:
-        if message.type is MessageType.UNSUPPORTED:
-            return "Por ahora solo puedo leer mensajes de texto 🙂"
-        return f"Recibido: {message.text or message.reply_id}"
+    async def reply_to(self, message: InboundMessage) -> Reply: ...
 
 
 class ProcessInboundMessage:
@@ -50,8 +41,8 @@ class ProcessInboundMessage:
             message = await self._repo.get_unprocessed(wamid)
             if message is None:
                 return
-            body = await self._responder.reply_to(message)
-            sent_id = await self._gateway.send_text(message.phone, body)
-            await self._repo.add_outbound(message.phone, body, sent_id)
+            reply = await self._responder.reply_to(message)
+            sent_id = await self._gateway.send(message.phone, reply)
+            await self._repo.add_outbound(message.phone, reply, sent_id)
             await self._repo.mark_processed(wamid)
             log.info("message_processed", wamid=wamid)

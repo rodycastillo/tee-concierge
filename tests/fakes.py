@@ -1,14 +1,14 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from tee_concierge.domain.messaging import InboundMessage, StoredReply
+from tee_concierge.domain.messaging import ConversationState, InboundMessage, Reply, StoredReply
 
 
 class InMemoryMessageRepository:
     def __init__(self) -> None:
         self.inbound: dict[str, InboundMessage] = {}
         self.processed: set[str] = set()
-        self.outbound: list[tuple[str, str, str | None]] = []
+        self.outbound: list[tuple[str, Reply, str | None]] = []
 
     async def add_inbound(self, message: InboundMessage) -> bool:
         if message.wamid in self.inbound:
@@ -24,8 +24,8 @@ class InMemoryMessageRepository:
     async def mark_processed(self, wamid: str) -> None:
         self.processed.add(wamid)
 
-    async def add_outbound(self, phone: str, body: str, wamid: str | None) -> None:
-        self.outbound.append((phone, body, wamid))
+    async def add_outbound(self, phone: str, reply: Reply, wamid: str | None) -> None:
+        self.outbound.append((phone, reply, wamid))
 
     async def list_outbound(self, phone: str, after_id: int = 0) -> list[StoredReply]:
         return []
@@ -45,10 +45,10 @@ class RecordingQueue:
 
 class RecordingGateway:
     def __init__(self) -> None:
-        self.sent: list[tuple[str, str]] = []
+        self.sent: list[tuple[str, Reply]] = []
 
-    async def send_text(self, to: str, body: str) -> str | None:
-        self.sent.append((to, body))
+    async def send(self, to: str, reply: Reply) -> str | None:
+        self.sent.append((to, reply))
         return f"out.{len(self.sent)}"
 
 
@@ -56,3 +56,14 @@ class NoopLock:
     @asynccontextmanager
     async def hold(self, key: str) -> AsyncIterator[None]:
         yield
+
+
+class InMemoryConversationRepository:
+    def __init__(self) -> None:
+        self.states: dict[str, ConversationState] = {}
+
+    async def get(self, phone: str) -> ConversationState | None:
+        return self.states.get(phone)
+
+    async def save(self, state: ConversationState) -> None:
+        self.states[state.phone] = state

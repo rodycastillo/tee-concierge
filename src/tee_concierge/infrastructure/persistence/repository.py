@@ -4,8 +4,15 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from tee_concierge.domain.messaging import InboundMessage, MessageType, StoredReply
-from tee_concierge.infrastructure.persistence.models import MessageRow
+from tee_concierge.domain.messaging import (
+    ConversationState,
+    InboundMessage,
+    MessageType,
+    Option,
+    Reply,
+    StoredReply,
+)
+from tee_concierge.infrastructure.persistence.models import ConversationRow, MessageRow
 
 
 class SqlMessageRepository:
@@ -59,7 +66,7 @@ class SqlMessageRepository:
                 .values(processed_at=datetime.now(UTC))
             )
 
-    async def add_outbound(self, phone: str, body: str, wamid: str | None) -> None:
+    async def add_outbound(self, phone: str, reply: Reply, wamid: str | None) -> None:
         now = datetime.now(UTC)
         async with self._sessions() as session, session.begin():
             session.add(
@@ -67,8 +74,12 @@ class SqlMessageRepository:
                     wamid=wamid,
                     direction="out",
                     phone=phone,
-                    type=MessageType.TEXT.value,
-                    body=body,
+                    type=reply.kind.value,
+                    body=reply.body,
+                    options=[
+                        {"id": o.id, "title": o.title, "description": o.description}
+                        for o in reply.options
+                    ],
                     sent_at=now,
                     processed_at=now,
                 )
@@ -85,4 +96,41 @@ class SqlMessageRepository:
                 )
                 .order_by(MessageRow.id)
             )
-            return [StoredReply(id=r.id, body=r.body or "", sent_at=r.sent_at) for r in rows]
+            return [
+                StoredReply(
+                    id=r.id,
+                    body=r.body or "",
+                    options=tuple(
+                        Option(o["id"], o["title"], o.get("description")) for o in r.options or []
+                    ),
+                    sent_at=r.sent_at,
+                )
+                for r in rows
+            ]
+
+
+class SqlConversationRepository:
+    def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
+        self._sessions = sessions
+
+    async def get(self, phone: str) -> ConversationState | None:
+        async with self._sessions() as session:
+            row = await session.get(ConversationRow, phone)
+        if row is None:
+            return None
+        updated_at = row.updated_at
+        if updated_at.tzinfo is None:  # SQLite drops tzinfo
+            updated_at = updated_at.replace(tzinfo=UTC)
+        return ConversationState(phone, row.node, row.failures, updated_at)
+
+    async def save(self, state: ConversationState) -> None:
+        updated_at = state.updated_at or datetime.now(UTC)
+        async with self._sessions() as session, session.begin():
+            await session.merge(
+                ConversationRow(
+                    phone=state.phone,
+                    node=state.node,
+                    failures=state.failures,
+                    updated_at=updated_at,
+                )
+            )

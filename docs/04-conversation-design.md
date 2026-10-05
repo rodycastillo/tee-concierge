@@ -70,6 +70,10 @@ Design choice: **button ids encode the target node** (for example `cat:12`, `pro
 
 Menu structure is **declarative** (a node registry: id, title, children, handler) and not hard-coded in if/else chains. Adding a menu option means adding a node.
 
+## 4.4b Sessions
+
+A conversation with no activity for **2 hours** is a new session: the next message, whatever it says, opens the main menu. A tap on an old menu is still honored, because option ids carry their own target.
+
 ## 4.5 Handling text that is not a tap
 
 | Situation | Behavior |

@@ -1,7 +1,12 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
-from tee_concierge.domain.messaging import InboundMessage, StoredReply
+from tee_concierge.domain.messaging import (
+    ConversationState,
+    InboundMessage,
+    Reply,
+    StoredReply,
+)
 
 
 class MessageRepository(Protocol):
@@ -15,9 +20,15 @@ class MessageRepository(Protocol):
 
     async def mark_processed(self, wamid: str) -> None: ...
 
-    async def add_outbound(self, phone: str, body: str, wamid: str | None) -> None: ...
+    async def add_outbound(self, phone: str, reply: Reply, wamid: str | None) -> None: ...
 
     async def list_outbound(self, phone: str, after_id: int = 0) -> list[StoredReply]: ...
+
+
+class ConversationRepository(Protocol):
+    async def get(self, phone: str) -> ConversationState | None: ...
+
+    async def save(self, state: ConversationState) -> None: ...
 
 
 class JobQueue(Protocol):
@@ -27,8 +38,8 @@ class JobQueue(Protocol):
 
 
 class MessageGateway(Protocol):
-    async def send_text(self, to: str, body: str) -> str | None:
-        """Send a text message. Returns the provider's message id, if any."""
+    async def send(self, to: str, reply: Reply) -> str | None:
+        """Send a text, buttons or list message. Returns the provider's message id."""
         ...
 
 
