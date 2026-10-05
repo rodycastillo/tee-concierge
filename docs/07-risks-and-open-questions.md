@@ -16,7 +16,7 @@
 
 | # | Question | Needed by |
 |---|---|---|
-| Q3 | Meta Business account and WhatsApp test number: created yet? | Phase 2 |
+| Q3 | Meta Business account and WhatsApp test number: needed to test against the real Cloud API (the bot is only verified with the fake gateway so far) | Before going live |
 | Q7 | Hosting preference or free-tier constraints | Phase 7 |
 | Q14 | FAQ answers (sizes, shipping, payment, returns) are generic placeholders seeded into `faq_entries`; replace with the real policies, and replace the demo catalog with real products and photo URLs | Before going live |
 | Q13 | The real contact number and opening hours | Phase 5 |

@@ -43,7 +43,7 @@ Each phase ends with something demoable, and every phase keeps CI green.
 - Rate limits and security review
 - **Done when** the owner can change a product or FAQ answer without touching code.
 
-## Phase 7: Showcase and stretch
+## Phase 7: Showcase and stretch (in progress)
 - Public demo deployment, GIF or video, polished README and diagrams, "lessons learned"
 - **Stretch options (pick any):** order status lookup, cart and payment link, optional LLM fallback node, template notifications.
 - **Done when** a recruiter can understand the project in 5 minutes and try it in 1 command.

@@ -83,8 +83,8 @@ sequenceDiagram
 | **Config** | `pydantic-settings`, 12-factor, no secrets in the repo |
 | **Logging** | `structlog` JSON, correlation id = wamid; phone numbers hashed or masked |
 | **Metrics** | Prometheus: webhook latency, queue depth, reply latency, menu node usage, "Contáctanos" taps |
-| **Tracing** | OpenTelemetry across webhook, worker and DB |
-| **Rate limiting** | Per-phone token bucket in Redis to stop abuse and runaway cost |
+| **Tracing** | Not implemented. The message id is bound to every log line as a correlation id (see doc 9) |
+| **Rate limiting** | Per-phone fixed window in Redis (20/min by default); excess dropped silently |
 | **AuthN/Z** | Admin API: JWT or API key; webhook: HMAC signature |
 
 ## 2.7 Deployment
@@ -94,26 +94,6 @@ sequenceDiagram
 - **CI/CD:** GitHub Actions runs lint (ruff), types (mypy), tests (pytest), import-linter, a container build and a deploy on tag.
 - **Environments:** `local`, `staging` (Meta test number), `prod`.
 
-## 2.8 Proposed directory structure
+## 2.8 Directory structure
 
-```
-src/tee_concierge/
-├── domain/
-│   ├── catalog/        Product, Variant, Money, Size
-│   ├── customers/      Customer, PhoneNumber, Consent
-│   ├── conversations/  Conversation, Message, ConversationState
-│   ├── orders/         Cart, Order, OrderStatus
-│   └── ports/          ProductRepository, MessageGateway, ConversationRepository, ...
-├── application/
-│   ├── engine/         Menu node registry, router, state machine, renderers
-│   ├── use_cases/      ListCategories, ListProducts, GetVariantAvailability, GetFaq, GetContactInfo, ...
-│   └── dto.py
-├── infrastructure/
-│   ├── whatsapp/       Cloud API client, payload parsers, fake gateway
-│   ├── persistence/    SQLAlchemy models, repositories, Alembic
-│   ├── queue/          Redis queue
-├── interfaces/
-│   ├── webhook/        Verify + ingest
-│   └── admin/          REST API
-└── config.py
-```
+See the layout in the [README](../README.md#project-layout). It follows the layers above one to one: `domain`, `application` (engine, content, ingest, process, admin), `infrastructure` (persistence, queue, whatsapp, worker, metrics) and `interfaces/api`.

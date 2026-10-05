@@ -11,7 +11,7 @@
 | LLM | **None in the MVP** (see ADR-0005) | Claude, OpenAI | Menu-driven flow needs no model; can be added later behind a port |
 | Validation / config | **Pydantic v2, pydantic-settings** | n/a | Typed config, 12-factor |
 | HTTP client | **httpx** | aiohttp | Async, easy to mock |
-| Logging / metrics | **structlog, prometheus-client, OpenTelemetry** | n/a | Production-grade observability |
+| Logging / metrics | **structlog, prometheus-client** | OpenTelemetry (deferred) | JSON logs with correlation id and Prometheus counters/histograms |
 | Packaging | **uv** + `pyproject.toml` | Poetry, pip-tools | Fast, lockfile, modern |
 | Quality | **ruff, mypy (strict), import-linter, pre-commit** | flake8, black | One fast linter and formatter; layer rules enforced |
 | Testing | **pytest, pytest-asyncio, respx, testcontainers, hypothesis** | unittest | Real Postgres and Redis in integration tests |
