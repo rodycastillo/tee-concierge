@@ -16,7 +16,12 @@ from tee_concierge.domain.messaging import (
     Option,
     Reply,
 )
-from tee_concierge.domain.ports import CatalogRepository, ConversationRepository, FaqRepository
+from tee_concierge.domain.ports import (
+    CatalogRepository,
+    ConversationRepository,
+    FaqRepository,
+    UsageRepository,
+)
 
 log = structlog.get_logger()
 
@@ -42,6 +47,7 @@ class MenuEngine:
         store: StoreInfo,
         catalog: CatalogRepository,
         faq: FaqRepository,
+        usage: UsageRepository,
         registry: NodeRegistry | None = None,
         clock: Callable[[], datetime] = _utcnow,
     ) -> None:
@@ -49,6 +55,7 @@ class MenuEngine:
         self._store = store
         self._catalog = catalog
         self._faq = faq
+        self._usage = usage
         self._registry = registry or build_registry()
         self._clock = clock
 
@@ -61,11 +68,28 @@ class MenuEngine:
         if state is None or new_session:
             state = ConversationState(phone=message.phone)
 
-        node_id, failures, reply = await self._resolve(message, state, new_session)
+        try:
+            node_id, failures, reply = await self._resolve(message, state, new_session)
+        except (ValueError, KeyError, TypeError):
+            # A screen failed to render (e.g. data that breaks WhatsApp limits). Don't leave
+            # the customer without an answer. Infrastructure errors still propagate and retry.
+            log.exception("render_failed", wamid=message.wamid, node=state.node)
+            node_id, failures = MAIN, 0
+            reply = Reply(
+                es.ERROR_GENERIC,
+                (Option(encode(MAIN), es.LABEL_MAIN), Option(encode(CONTACT), es.LABEL_CONTACT)),
+            )
+        await self._record_visit(node_id)
         await self._conversations.save(
             ConversationState(message.phone, node=node_id, failures=failures, updated_at=now)
         )
         return reply
+
+    async def _record_visit(self, node_id: str) -> None:
+        try:
+            await self._usage.record_visit(node_id)
+        except Exception:  # reporting must never break a conversation
+            log.warning("usage_not_recorded", node=node_id, exc_info=True)
 
     async def _resolve(
         self, message: InboundMessage, state: ConversationState, new_session: bool

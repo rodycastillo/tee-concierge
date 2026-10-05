@@ -8,6 +8,7 @@ from fastapi.responses import PlainTextResponse
 
 from tee_concierge.application.ingest import IngestWebhook
 from tee_concierge.config import Settings, get_settings
+from tee_concierge.infrastructure import metrics
 from tee_concierge.infrastructure.whatsapp.signature import verify_signature
 from tee_concierge.interfaces.api.dependencies import get_ingest
 
@@ -40,12 +41,17 @@ async def receive_webhook(
     signature = request.headers.get("X-Hub-Signature-256")
     if not verify_signature(settings.whatsapp_app_secret.get_secret_value(), body, signature):
         log.warning("invalid_signature")
+        metrics.WEBHOOK_REQUESTS.labels("bad_signature").inc()
         raise HTTPException(status_code=401, detail="invalid signature")
     try:
         payload = json.loads(body)
     except ValueError as exc:
+        metrics.WEBHOOK_REQUESTS.labels("bad_payload").inc()
         raise HTTPException(status_code=400, detail="invalid JSON") from exc
     if not isinstance(payload, dict):
+        metrics.WEBHOOK_REQUESTS.labels("bad_payload").inc()
         raise HTTPException(status_code=400, detail="invalid payload")
     accepted = await ingest.execute(payload)
+    metrics.WEBHOOK_REQUESTS.labels("ok").inc()
+    metrics.MESSAGES_INGESTED.inc(accepted)
     return {"status": "ok", "accepted": accepted}

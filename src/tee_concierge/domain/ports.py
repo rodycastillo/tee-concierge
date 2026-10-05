@@ -1,5 +1,6 @@
 from contextlib import AbstractAsyncContextManager
-from typing import Protocol
+from decimal import Decimal
+from typing import Any, Protocol
 
 from tee_concierge.domain.catalog import Category, Product, Variant
 from tee_concierge.domain.messaging import (
@@ -9,6 +10,7 @@ from tee_concierge.domain.messaging import (
     Reply,
     StatusUpdate,
     StoredReply,
+    UsageSummary,
 )
 
 
@@ -64,6 +66,50 @@ class CatalogRepository(Protocol):
 class FaqRepository(Protocol):
     async def get(self, topic: str) -> str | None:
         """Editable answer for a topic (sizes, shipping, payment, returns), if set."""
+        ...
+
+
+class AdminCatalogRepository(Protocol):
+    """Write side of the catalog, used by the admin API."""
+
+    async def create_category(self, name: str) -> Category: ...
+
+    async def list_all_products(self, offset: int, limit: int) -> list[Product]:
+        """Including inactive products."""
+        ...
+
+    async def create_product(
+        self,
+        category_id: int,
+        name: str,
+        description: str,
+        material: str,
+        price: Decimal,
+        image_url: str | None,
+    ) -> Product: ...
+
+    async def update_product(self, product_id: int, changes: dict[str, Any]) -> Product: ...
+
+    async def create_variant(
+        self, product_id: int, sku: str, size: str, color: str, stock: int
+    ) -> Variant: ...
+
+    async def set_stock(self, variant_id: int, stock: int) -> Variant: ...
+
+    async def set_faq(self, topic: str, body: str) -> None: ...
+
+    async def list_faq(self) -> dict[str, str]: ...
+
+
+class UsageRepository(Protocol):
+    async def record_visit(self, node: str) -> None: ...
+
+    async def summary(self, top: int = 10) -> UsageSummary: ...
+
+
+class RateLimiter(Protocol):
+    async def allow(self, key: str) -> bool:
+        """Count one event for `key`; False once it exceeds the allowed rate."""
         ...
 
 

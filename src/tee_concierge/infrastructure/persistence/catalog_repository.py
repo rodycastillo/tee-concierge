@@ -12,7 +12,14 @@ from tee_concierge.infrastructure.persistence.models import (
 
 def _product(row: ProductRow) -> Product:
     return Product(
-        row.id, row.category_id, row.name, row.description, row.material, row.price, row.image_url
+        row.id,
+        row.category_id,
+        row.name,
+        row.description,
+        row.material,
+        row.price,
+        row.image_url,
+        row.active,
     )
 
 

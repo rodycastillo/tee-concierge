@@ -20,6 +20,7 @@ LABEL_SIZES_COLORS = "📏 Tallas y colores"
 LABEL_OTHER_SIZE = "⬅️ Otra talla"
 LIST_BUTTON = "Ver opciones"
 
+ERROR_GENERIC = "Tuvimos un problema 😕 Intenta de nuevo o contáctanos."
 NOT_UNDERSTOOD = "No te entendí 😅 Por favor elige una de las opciones:"
 NOT_UNDERSTOOD_TWICE = (
     "Sigo sin entenderte 😅 Si prefieres, puedes hablar directamente con nosotros "
@@ -82,7 +83,8 @@ def choose_size(name: str) -> str:
 
 
 def stock_for_size(name: str, size: str, lines: list[str]) -> str:
-    return f"*{name}* · Talla {size}\n\n" + "\n".join(lines)
+    text = f"*{name}* · Talla {size}\n\n" + "\n".join(lines)
+    return text if len(text) <= 1000 else text[:999].rstrip() + "…"
 
 
 STOCK_AVAILABLE = "disponible"

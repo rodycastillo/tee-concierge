@@ -97,6 +97,13 @@ class VariantRow(Base):
     stock: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class NodeVisitRow(Base):
+    __tablename__ = "node_visits"
+
+    node: Mapped[str] = mapped_column(String(64), primary_key=True)
+    visits: Mapped[int] = mapped_column(BigInteger().with_variant(Integer(), "sqlite"), default=0)
+
+
 class FaqRow(Base):
     __tablename__ = "faq_entries"
 

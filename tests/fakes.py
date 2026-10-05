@@ -10,6 +10,7 @@ from tee_concierge.domain.messaging import (
     Reply,
     StatusUpdate,
     StoredReply,
+    UsageSummary,
 )
 
 
@@ -143,3 +144,29 @@ class InMemoryFaq:
 
     async def get(self, topic: str) -> str | None:
         return self.entries.get(topic)
+
+
+class RecordingUsage:
+    def __init__(self, fail: bool = False) -> None:
+        self.visits: list[str] = []
+        self._fail = fail
+
+    async def summary(self, top: int = 10) -> UsageSummary:
+        return UsageSummary(0, 0, 0, [])
+
+    async def record_visit(self, node: str) -> None:
+        if self._fail:
+            raise ConnectionError("db down")
+        self.visits.append(node)
+
+
+class FixedLimiter:
+    """Allows the first `limit` calls per key."""
+
+    def __init__(self, limit: int = 1000) -> None:
+        self._limit = limit
+        self.calls: dict[str, int] = {}
+
+    async def allow(self, key: str) -> bool:
+        self.calls[key] = self.calls.get(key, 0) + 1
+        return self.calls[key] <= self._limit

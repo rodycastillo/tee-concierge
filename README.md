@@ -2,7 +2,7 @@
 
 A WhatsApp assistant for a T-shirt store, in Spanish. It greets customers with an interactive menu and guides them through catalog, sizes, prices, stock, shipping, payment and returns using tappable options, and shows how to contact the store when a person is needed.
 
-> **Status:** Phases 1 to 5 done (foundation, messaging core, conversation engine, catalog and FAQ, contact and delivery tracking). Phase 6 (admin and observability) is next. See [docs/](docs/).
+> **Status:** Phases 1 to 6 done. Phase 7 (showcase) is in progress. See [docs/](docs/).
 
 ## Quick start
 
@@ -38,6 +38,7 @@ A portfolio project meant to show production-minded backend engineering in Pytho
 | 6 | [Roadmap](docs/06-roadmap.md) | Phased delivery plan with acceptance criteria |
 | 7 | [Risks and open questions](docs/07-risks-and-open-questions.md) | Things to decide or validate before coding |
 | 8 | [Meta WhatsApp setup](docs/08-meta-whatsapp-setup.md) | Step-by-step Cloud API account, token and webhook setup |
+| 9 | [Security and operations](docs/09-security-and-operations.md) | Threat model, limitations, metrics, production checklist |
 | - | [ADRs](docs/adr/) | Architecture Decision Records |
 
 ## Planned repository layout

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     store_contact_phone: str = ""
     store_hours: str = ""
 
+    admin_api_key: SecretStr = SecretStr("")  # empty disables the admin API
+    rate_limit_per_minute: int = 20  # inbound messages per customer
+    metrics_port: int = 9100  # worker Prometheus endpoint
+
 
 @lru_cache
 def get_settings() -> Settings:

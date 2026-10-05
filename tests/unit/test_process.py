@@ -1,8 +1,8 @@
-from tee_concierge.application.process import ProcessInboundMessage
+from tee_concierge.application.process import ProcessInboundMessage, ProcessOutcome
 from tee_concierge.domain.messaging import InboundMessage, Reply
 from tee_concierge.infrastructure.whatsapp.parser import parse_inbound_messages
 from tee_concierge.infrastructure.whatsapp.simulator import text_payload
-from tests.fakes import InMemoryMessageRepository, NoopLock, RecordingGateway
+from tests.fakes import FixedLimiter, InMemoryMessageRepository, NoopLock, RecordingGateway
 
 
 class StubResponder:
@@ -10,11 +10,17 @@ class StubResponder:
         return Reply(f"eco: {message.text}")
 
 
-async def _setup() -> tuple[InMemoryMessageRepository, RecordingGateway, ProcessInboundMessage]:
+async def _setup(
+    limit: int = 1000,
+) -> tuple[InMemoryMessageRepository, RecordingGateway, ProcessInboundMessage]:
     repo, gateway = InMemoryMessageRepository(), RecordingGateway()
     for msg in parse_inbound_messages(text_payload("51911111111", "Hola", "wamid.1")):
         await repo.add_inbound(msg)
-    return repo, gateway, ProcessInboundMessage(repo, gateway, NoopLock(), StubResponder())
+    return (
+        repo,
+        gateway,
+        ProcessInboundMessage(repo, gateway, NoopLock(), StubResponder(), FixedLimiter(limit)),
+    )
 
 
 async def test_replies_persists_outbound_and_marks_processed() -> None:
@@ -57,3 +63,18 @@ async def test_a_failing_mark_read_does_not_block_the_reply() -> None:
     await process.execute("wamid.1")
 
     assert len(gateway.sent) == 1
+
+
+async def test_outcomes_are_reported() -> None:
+    _, _, process = await _setup()
+    assert await process.execute("wamid.1") is ProcessOutcome.REPLIED
+    assert await process.execute("wamid.1") is ProcessOutcome.SKIPPED
+
+
+async def test_a_customer_over_the_rate_limit_gets_no_reply_and_the_message_is_closed() -> None:
+    repo, gateway, process = await _setup(limit=0)
+
+    outcome = await process.execute("wamid.1")
+
+    assert outcome is ProcessOutcome.RATE_LIMITED
+    assert gateway.sent == [] and "wamid.1" in repo.processed  # not retried forever

@@ -6,7 +6,12 @@ from tee_concierge.application.content.store import StoreInfo
 from tee_concierge.application.engine.engine import SESSION_TIMEOUT, MenuEngine
 from tee_concierge.application.engine.routing import decode, encode, normalize
 from tee_concierge.domain.messaging import InboundMessage, MessageType, Reply
-from tests.fakes import InMemoryCatalog, InMemoryConversationRepository, InMemoryFaq
+from tests.fakes import (
+    InMemoryCatalog,
+    InMemoryConversationRepository,
+    InMemoryFaq,
+    RecordingUsage,
+)
 
 PHONE = "51911111111"
 STORE = StoreInfo(name="Tee Concierge", contact_phone="51943713293", hours="Lun a Sáb 10-19")
@@ -39,12 +44,18 @@ def clock() -> Clock:
 
 
 @pytest.fixture
-def engine(clock: Clock) -> MenuEngine:
+def usage() -> RecordingUsage:
+    return RecordingUsage()
+
+
+@pytest.fixture
+def engine(clock: Clock, usage: RecordingUsage) -> MenuEngine:
     return MenuEngine(
         InMemoryConversationRepository(),
         STORE,
         InMemoryCatalog(),
         InMemoryFaq({"shipping": "Envíos a todo Lima en 24h"}),
+        usage,
         clock=clock,
     )
 
@@ -165,3 +176,47 @@ def test_route_encoding_round_trips() -> None:
 
 def test_normalize() -> None:
     assert normalize("¿Envíos, ya?") == "envios ya"
+
+
+async def test_visits_are_recorded_per_screen(engine: MenuEngine, usage: RecordingUsage) -> None:
+    await engine.reply_to(_text("hola"))
+    await engine.reply_to(_tap(encode("shipping")))
+    await engine.reply_to(_text("yape"))
+
+    assert usage.visits == ["main", "shipping", "payment"]
+
+
+async def test_a_usage_outage_never_breaks_the_conversation(clock: Clock) -> None:
+    engine = MenuEngine(
+        InMemoryConversationRepository(),
+        STORE,
+        InMemoryCatalog(),
+        InMemoryFaq(),
+        RecordingUsage(fail=True),
+        clock=clock,
+    )
+
+    reply = await engine.reply_to(_text("hola"))
+
+    assert "Bienvenido" in reply.body
+
+
+async def test_a_screen_that_cannot_render_falls_back_to_a_safe_reply(clock: Clock) -> None:
+    class BrokenFaq:
+        async def get(self, topic: str) -> str | None:
+            return "x" * 5000  # would violate WhatsApp's 1024-char body limit
+
+    engine = MenuEngine(
+        InMemoryConversationRepository(),
+        STORE,
+        InMemoryCatalog(),
+        BrokenFaq(),
+        RecordingUsage(),
+        clock=clock,
+    )
+    await engine.reply_to(_text("hola"))
+
+    reply = await engine.reply_to(_tap(encode("shipping")))
+
+    assert "Tuvimos un problema" in reply.body
+    assert _ids(reply) == [encode("main"), encode("contact")]

@@ -20,6 +20,7 @@ class Product:
     material: str
     price: Decimal  # PEN
     image_url: str | None = None
+    active: bool = True
 
 
 @dataclass(frozen=True, slots=True)

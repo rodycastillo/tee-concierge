@@ -140,6 +140,14 @@ class HistoryMessage:
 
 
 @dataclass(frozen=True, slots=True)
+class UsageSummary:
+    inbound_messages: int
+    outbound_messages: int
+    customers: int
+    top_nodes: list[tuple[str, int]]  # (menu node, visits), most visited first
+
+
+@dataclass(frozen=True, slots=True)
 class StoredReply:
     id: int
     body: str

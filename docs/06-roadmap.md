@@ -37,7 +37,7 @@ Each phase ends with something demoable, and every phase keeps CI green.
 - Message status tracking (accepted, sent, delivered, read, failed; never moves backwards), inbound messages marked as read, conversation history query
 - **Done when** every menu leaf can reach "Contáctanos" and statuses are stored.
 
-## Phase 6: Admin and observability
+## Phase 6: Admin and observability (done, tracing deferred)
 - Admin API (catalog, FAQ content, conversations), auth
 - Metrics, tracing, menu usage reports
 - Rate limits and security review

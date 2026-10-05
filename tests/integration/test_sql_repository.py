@@ -150,3 +150,27 @@ async def test_failed_status_is_recorded_when_nothing_better_happened(
 
     [row] = await repo.list_history("51911111111")
     assert row.status == "failed"
+
+
+async def test_usage_counters_increment_and_summarize(
+    repo: SqlMessageRepository, tmp_path: Path
+) -> None:
+    from tee_concierge.infrastructure.persistence.admin_repository import SqlUsageRepository
+
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path}/usage.db")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    sessions = create_sessionmaker(engine)
+    usage, messages = SqlUsageRepository(sessions), SqlMessageRepository(sessions)
+
+    for node in ("main", "shipping", "main", "main", "shipping", "catalog"):
+        await usage.record_visit(node)
+    [msg] = parse_inbound_messages(text_payload("51911111111", "Hola", "w1"))
+    await messages.add_inbound(msg)
+    await messages.add_outbound("51911111111", Reply("hola"), "o1")
+
+    summary = await usage.summary(top=2)
+
+    assert summary.top_nodes == [("main", 3), ("shipping", 2)]
+    assert (summary.inbound_messages, summary.outbound_messages, summary.customers) == (1, 1, 1)
+    await engine.dispose()

@@ -20,6 +20,7 @@ services:
   worker:
     build: .
     command: ["arq", "tee_concierge.infrastructure.worker.WorkerSettings"]
+    ports: ["9100:9100"]
     env_file: [.env]
     environment:
       DATABASE_URL: postgresql+asyncpg://tee:tee@postgres:5432/tee
