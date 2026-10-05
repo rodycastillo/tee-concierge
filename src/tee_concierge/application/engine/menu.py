@@ -1,31 +1,17 @@
 """The menu tree: which nodes exist, how they link, and which words jump to them."""
 
 from tee_concierge.application.content import es
+from tee_concierge.application.engine import catalog_nodes
+from tee_concierge.application.engine.nav import CONTACT, MAIN, go, navigation
 from tee_concierge.application.engine.nodes import Node, NodeContext, NodeHandler, NodeRegistry
-from tee_concierge.application.engine.routing import encode
-from tee_concierge.domain.messaging import Option, Reply
-
-MAIN = "main"
-CONTACT = "contact"
+from tee_concierge.domain.messaging import Reply
 
 
-def _go(node: str, label: str) -> Option:
-    return Option(id=encode(node), title=label)
+def _faq(topic: str, default: str) -> NodeHandler:
+    """A leaf whose text is editable in the database (`faq_entries`), with a default."""
 
-
-def navigation(parent: str | None) -> tuple[Option, ...]:
-    """Footer for leaf screens. 'Volver' is omitted when it would equal 'Menú principal'."""
-    options: list[Option] = []
-    if parent not in (None, MAIN):
-        options.append(_go(parent, es.LABEL_BACK))
-    options.append(_go(MAIN, es.LABEL_MAIN))
-    options.append(_go(CONTACT, es.LABEL_CONTACT))
-    return tuple(options)
-
-
-def _leaf(parent: str, text: str) -> NodeHandler:
     async def handler(ctx: NodeContext) -> Reply:
-        return Reply(text, navigation(parent))
+        return Reply(await ctx.faq.get(topic) or default, navigation(MAIN))
 
     return handler
 
@@ -35,13 +21,13 @@ async def _main(ctx: NodeContext) -> Reply:
     return Reply(
         es.welcome(ctx.store, first_name),
         (
-            _go("catalog", es.LABEL_CATALOG),
-            _go("sizes", es.LABEL_SIZES),
-            _go("shipping", es.LABEL_SHIPPING),
-            _go("payment", es.LABEL_PAYMENT),
-            _go("returns", es.LABEL_RETURNS),
-            _go("hours", es.LABEL_HOURS),
-            _go(CONTACT, es.LABEL_CONTACT),
+            go(catalog_nodes.CATALOG, es.LABEL_CATALOG),
+            go("sizes", es.LABEL_SIZES),
+            go("shipping", es.LABEL_SHIPPING),
+            go("payment", es.LABEL_PAYMENT),
+            go("returns", es.LABEL_RETURNS),
+            go("hours", es.LABEL_HOURS),
+            go(CONTACT, es.LABEL_CONTACT),
         ),
         list_button=es.LIST_BUTTON,
     )
@@ -52,7 +38,7 @@ async def _hours(ctx: NodeContext) -> Reply:
 
 
 async def _contact(ctx: NodeContext) -> Reply:
-    return Reply(es.contact(ctx.store), (_go(MAIN, es.LABEL_MAIN),))
+    return Reply(es.contact(ctx.store), (go(MAIN, es.LABEL_MAIN),))
 
 
 def build_registry() -> NodeRegistry:
@@ -77,12 +63,12 @@ def build_registry() -> NodeRegistry:
             ),
         )
     )
-    registry.register(Node("sizes", MAIN, _leaf(MAIN, es.SIZES), ("talla", "tallas", "medidas")))
+    registry.register(Node("sizes", MAIN, _faq("sizes", es.SIZES), ("talla", "tallas", "medidas")))
     registry.register(
         Node(
             "shipping",
             MAIN,
-            _leaf(MAIN, es.SHIPPING),
+            _faq("shipping", es.SHIPPING),
             ("envio", "envios", "delivery", "despacho", "flete", "entrega"),
         )
     )
@@ -90,7 +76,7 @@ def build_registry() -> NodeRegistry:
         Node(
             "payment",
             MAIN,
-            _leaf(MAIN, es.PAYMENT),
+            _faq("payment", es.PAYMENT),
             ("pago", "pagos", "pagar", "yape", "plin", "transferencia", "tarjeta"),
         )
     )
@@ -98,7 +84,7 @@ def build_registry() -> NodeRegistry:
         Node(
             "returns",
             MAIN,
-            _leaf(MAIN, es.RETURNS),
+            _faq("returns", es.RETURNS),
             ("cambio", "cambios", "devolucion", "devoluciones", "reembolso"),
         )
     )
@@ -112,12 +98,17 @@ def build_registry() -> NodeRegistry:
     )
     registry.register(
         Node(
-            "catalog",
+            catalog_nodes.CATALOG,
             MAIN,
-            _leaf(MAIN, es.CATALOG),
+            catalog_nodes.catalog,
             ("catalogo", "productos", "polos", "polo", "camisetas", "precio", "precios"),
         )
     )
+    # Reachable only by tapping (no keywords): they need arguments.
+    registry.register(Node(catalog_nodes.CATEGORY, catalog_nodes.CATALOG, catalog_nodes.category))
+    registry.register(Node(catalog_nodes.PRODUCT, catalog_nodes.CATALOG, catalog_nodes.product))
+    registry.register(Node(catalog_nodes.SIZES, catalog_nodes.CATALOG, catalog_nodes.sizes))
+    registry.register(Node(catalog_nodes.STOCK, catalog_nodes.CATALOG, catalog_nodes.stock))
     registry.register(
         Node(
             MAIN,

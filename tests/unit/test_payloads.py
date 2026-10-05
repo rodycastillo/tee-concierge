@@ -26,3 +26,12 @@ def test_list_payload() -> None:
     assert interactive["type"] == "list"
     assert interactive["action"]["button"] == "Ver"
     assert len(interactive["action"]["sections"][0]["rows"]) == 5
+
+
+def test_button_payload_includes_the_image_header() -> None:
+    reply = Reply("Polo", (Option("go:a", "Ver"),), image_url="https://example.com/a.jpg")
+    interactive = build_send_payload("5191", reply)["interactive"]
+    assert interactive["header"] == {
+        "type": "image",
+        "image": {"link": "https://example.com/a.jpg"},
+    }

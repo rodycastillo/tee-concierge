@@ -38,3 +38,11 @@ def test_whatsapp_limits_are_enforced(reply) -> None:  # type: ignore[no-untyped
 def test_button_titles_may_use_the_longer_row_limit_only_in_lists() -> None:
     title = "t" * 24
     assert Reply("hola", _options(4, title[:-2])).kind is ReplyKind.LIST
+
+
+def test_images_are_only_allowed_on_button_messages() -> None:
+    assert Reply("x", _options(2), image_url="https://e.com/a.jpg").kind is ReplyKind.BUTTONS
+    with pytest.raises(ValueError):
+        Reply("x", _options(5), image_url="https://e.com/a.jpg")
+    with pytest.raises(ValueError):
+        Reply("x", image_url="https://e.com/a.jpg")

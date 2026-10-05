@@ -4,13 +4,16 @@ from dataclasses import dataclass
 from tee_concierge.application.content.store import StoreInfo
 from tee_concierge.application.engine.routing import normalize
 from tee_concierge.domain.messaging import Reply
+from tee_concierge.domain.ports import CatalogRepository, FaqRepository
 
 
 @dataclass(frozen=True, slots=True)
 class NodeContext:
-    """Everything a node needs to render. Phase 4 adds catalog access here."""
+    """Everything a node needs to render."""
 
     store: StoreInfo
+    catalog: CatalogRepository
+    faq: FaqRepository
     args: tuple[str, ...] = ()
     profile_name: str | None = None
 

@@ -47,6 +47,18 @@ Every leaf ends with: **[Volver] [Menú principal] [Contáctanos]**.
 
 The "Estado de mi pedido" option is the one place where free text is expected (the order number). It is optional in the MVP and needs the order data to come from somewhere (see doc 07).
 
+### Catalog screens (data-driven)
+
+| Screen | Option id | Shows |
+|---|---|---|
+| Categories | `go:catalog` | Active categories from the database |
+| Products | `go:cat:<id>:<page>` | 7 products per page (list rows reserve room for Ver más / Volver / Menú), name, price and material |
+| Detail | `go:product:<id>` | Name, price in soles, material, description, optional photo (button message header) |
+| Sizes | `go:variants:<id>` | One row per size, listing the colors in stock, or "Agotada" |
+| Stock | `go:stock:<id>:<size>` | Per color: disponible / ¡últimas unidades! (3 or fewer) / agotado. Exact numbers are never shown |
+
+FAQ screens (sizes, shipping, payment, returns) read their text from `faq_entries`, falling back to a default, so the owner can change them without a deploy. On the 3-button product detail screen "Contáctanos" is omitted for lack of room; the keyword shortcuts still reach it.
+
 ## 4.4 State model
 
 State is stored per conversation: a **current node** in the menu tree plus a small context (selected category, product, size, page, navigation stack).

@@ -18,7 +18,7 @@
 |---|---|---|
 | Q3 | Meta Business account and WhatsApp test number: created yet? | Phase 2 |
 | Q7 | Hosting preference or free-tier constraints | Phase 7 |
-| Q14 | FAQ answers (sizes, shipping, payment, returns) currently use generic placeholder copy in `application/content/es.py` | Phase 4 |
+| Q14 | FAQ answers (sizes, shipping, payment, returns) are generic placeholders seeded into `faq_entries`; replace with the real policies, and replace the demo catalog with real products and photo URLs | Before going live |
 | Q13 | The real contact number and opening hours | Phase 5 |
 | Q10b | Tone of voice and real FAQ content (shipping zones and costs, return policy, hours, payment methods such as Yape/Plin/transfer) | Phase 4 |
 | Q11 | Order status: where would order data come from, given there is no catalog or order system yet? | Stretch |

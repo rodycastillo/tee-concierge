@@ -1,6 +1,7 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
+from tee_concierge.domain.catalog import Category, Product, Variant
 from tee_concierge.domain.messaging import (
     ConversationState,
     InboundMessage,
@@ -29,6 +30,28 @@ class ConversationRepository(Protocol):
     async def get(self, phone: str) -> ConversationState | None: ...
 
     async def save(self, state: ConversationState) -> None: ...
+
+
+class CatalogRepository(Protocol):
+    async def list_categories(self) -> list[Category]: ...
+
+    async def get_category(self, category_id: int) -> Category | None: ...
+
+    async def list_products(
+        self, category_id: int, offset: int, limit: int
+    ) -> tuple[list[Product], int]:
+        """Active products of a category, plus the total count (for pagination)."""
+        ...
+
+    async def get_product(self, product_id: int) -> Product | None: ...
+
+    async def list_variants(self, product_id: int) -> list[Variant]: ...
+
+
+class FaqRepository(Protocol):
+    async def get(self, topic: str) -> str | None:
+        """Editable answer for a topic (sizes, shipping, payment, returns), if set."""
+        ...
 
 
 class JobQueue(Protocol):

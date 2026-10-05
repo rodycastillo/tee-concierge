@@ -19,6 +19,8 @@ def build_send_payload(to: str, reply: Reply) -> dict[str, Any]:
     interactive: dict[str, Any] = {"body": {"text": reply.body}}
     if kind is ReplyKind.BUTTONS:
         interactive["type"] = "button"
+        if reply.image_url:
+            interactive["header"] = {"type": "image", "image": {"link": reply.image_url}}
         interactive["action"] = {
             "buttons": [
                 {"type": "reply", "reply": {"id": o.id, "title": o.title}} for o in reply.options

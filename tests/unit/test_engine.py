@@ -6,7 +6,7 @@ from tee_concierge.application.content.store import StoreInfo
 from tee_concierge.application.engine.engine import SESSION_TIMEOUT, MenuEngine
 from tee_concierge.application.engine.routing import decode, encode, normalize
 from tee_concierge.domain.messaging import InboundMessage, MessageType, Reply
-from tests.fakes import InMemoryConversationRepository
+from tests.fakes import InMemoryCatalog, InMemoryConversationRepository, InMemoryFaq
 
 PHONE = "51911111111"
 STORE = StoreInfo(name="Tee Concierge", contact_phone="51943713293", hours="Lun a Sáb 10-19")
@@ -40,7 +40,13 @@ def clock() -> Clock:
 
 @pytest.fixture
 def engine(clock: Clock) -> MenuEngine:
-    return MenuEngine(InMemoryConversationRepository(), STORE, clock=clock)
+    return MenuEngine(
+        InMemoryConversationRepository(),
+        STORE,
+        InMemoryCatalog(),
+        InMemoryFaq({"shipping": "Envíos a todo Lima en 24h"}),
+        clock=clock,
+    )
 
 
 async def test_first_message_opens_the_main_menu_whatever_it_says(engine: MenuEngine) -> None:
@@ -64,14 +70,14 @@ async def test_tapping_an_option_navigates_and_offers_navigation_back(engine: Me
 
     reply = await engine.reply_to(_tap(encode("shipping")))
 
-    assert "Envíos" in reply.body
+    assert "Lima en 24h" in reply.body  # editable FAQ text wins over the default
     assert _ids(reply) == [encode("main"), encode("contact")]
 
 
 async def test_keywords_jump_to_nodes_ignoring_accents_and_case(engine: MenuEngine) -> None:
     await engine.reply_to(_text("hola"))
 
-    assert "Envíos" in (await engine.reply_to(_text("¿Cuánto cuesta el ENVÍO?"))).body
+    assert "Lima en 24h" in (await engine.reply_to(_text("¿Cuánto cuesta el ENVÍO?"))).body
     assert "Formas de pago" in (await engine.reply_to(_text("aceptan yape?"))).body
     assert "Contáctanos" in (await engine.reply_to(_text("quiero hablar con un asesor"))).body
 
@@ -95,7 +101,7 @@ async def test_unrecognized_text_reshows_the_current_menu(engine: MenuEngine) ->
 
     reply = await engine.reply_to(_text("blablabla"))
 
-    assert reply.body.startswith("No te entendí") and "Envíos" in reply.body
+    assert reply.body.startswith("No te entendí") and "Lima en 24h" in reply.body
     assert _ids(reply) == [encode("main"), encode("contact")]
 
 

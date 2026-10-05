@@ -15,6 +15,9 @@ LABEL_HOURS = "🕒 Horarios y ubicación"
 LABEL_CONTACT = "📞 Contáctanos"
 LABEL_BACK = "⬅️ Volver"
 LABEL_MAIN = "🏠 Menú principal"
+LABEL_MORE = "➡️ Ver más"
+LABEL_SIZES_COLORS = "📏 Tallas y colores"
+LABEL_OTHER_SIZE = "⬅️ Otra talla"
 LIST_BUTTON = "Ver opciones"
 
 NOT_UNDERSTOOD = "No te entendí 😅 Por favor elige una de las opciones:"
@@ -24,7 +27,6 @@ NOT_UNDERSTOOD_TWICE = (
 )
 UNSUPPORTED = "Por ahora solo puedo leer texto y opciones 🙂 Elige una de las opciones:"
 
-CATALOG = "Muy pronto podrás ver aquí nuestro catálogo de polos. 👕"
 SIZES = "📏 *Guía de tallas*\n\nEscríbenos y te ayudamos a elegir la talla ideal según tus medidas."
 SHIPPING = (
     "🚚 *Envíos*\n\nEl costo y el tiempo de entrega dependen de tu ubicación. "
@@ -54,3 +56,36 @@ def contact(store: StoreInfo) -> str:
         f"📞 *Contáctanos*\n\nEscríbenos o llámanos al +{store.contact_phone}.\n"
         f"Chatea directo: {store.whatsapp_link}"
     )
+
+
+CATALOG_EMPTY = "Por ahora no tenemos productos disponibles. Vuelve pronto 👕"
+CATALOG_CHOOSE_CATEGORY = "👕 *Nuestro catálogo*\n\nElige una categoría:"
+NOT_AVAILABLE = "Ese producto ya no está disponible 😕 Mira nuestro catálogo:"
+
+
+def choose_product(category: str, page: int, pages: int) -> str:
+    suffix = f" (página {page + 1} de {pages})" if pages > 1 else ""
+    return f"👕 *{category}*{suffix}\n\nElige un producto:"
+
+
+def product_detail(name: str, price: str, material: str, description: str) -> str:
+    lines = [f"*{name}*", f"💰 {price}"]
+    if material:
+        lines.append(f"🧵 {material}")
+    if description:
+        lines.append(f"\n{description}")
+    return "\n".join(lines)
+
+
+def choose_size(name: str) -> str:
+    return f"📏 *{name}*\n\nElige tu talla:"
+
+
+def stock_for_size(name: str, size: str, lines: list[str]) -> str:
+    return f"*{name}* · Talla {size}\n\n" + "\n".join(lines)
+
+
+STOCK_AVAILABLE = "disponible"
+STOCK_LOW = "¡últimas unidades!"
+STOCK_OUT = "agotado"
+SIZE_SOLD_OUT = "Agotada"

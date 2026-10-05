@@ -26,7 +26,7 @@ Each phase ends with something demoable, and every phase keeps CI green.
 - Spanish copy kept in one content module
 - **Done when** "Hola" opens the menu and the whole static tree is navigable, with the path-coverage test passing.
 
-## Phase 4: Catalog and FAQ
+## Phase 4: Catalog and FAQ (done)
 - Domain model, migrations, synthetic seed script (categories, products, sizes, colors, stock)
 - Catalog browsing nodes: category, product, detail, size and color availability, photos
 - FAQ nodes: sizes, shipping, payment, returns, hours and location, from editable content

@@ -1,6 +1,8 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from decimal import Decimal
 
+from tee_concierge.domain.catalog import Category, Product, Variant
 from tee_concierge.domain.messaging import ConversationState, InboundMessage, Reply, StoredReply
 
 
@@ -67,3 +69,51 @@ class InMemoryConversationRepository:
 
     async def save(self, state: ConversationState) -> None:
         self.states[state.phone] = state
+
+
+class InMemoryCatalog:
+    """Built from the same demo data as the seed script."""
+
+    def __init__(self, products_per_category_limit: int | None = None) -> None:
+        from tee_concierge.seed import DEMO_PRODUCTS, SIZES
+
+        self.categories: list[Category] = []
+        self.products: list[Product] = []
+        self.variants: list[Variant] = []
+        for category, name, desc, material, price, colors, stocks in DEMO_PRODUCTS:
+            cat = next((c for c in self.categories if c.name == category), None)
+            if cat is None:
+                cat = Category(len(self.categories) + 1, category)
+                self.categories.append(cat)
+            product = Product(len(self.products) + 1, cat.id, name, desc, material, Decimal(price))
+            self.products.append(product)
+            for size, stock in zip(SIZES, stocks, strict=True):
+                for color in colors:
+                    n = len(self.variants) + 1
+                    self.variants.append(Variant(n, product.id, f"SKU-{n}", size, color, stock))
+
+    async def list_categories(self) -> list[Category]:
+        return list(self.categories)
+
+    async def get_category(self, category_id: int) -> Category | None:
+        return next((c for c in self.categories if c.id == category_id), None)
+
+    async def list_products(
+        self, category_id: int, offset: int, limit: int
+    ) -> tuple[list[Product], int]:
+        mine = [p for p in self.products if p.category_id == category_id]
+        return mine[offset : offset + limit], len(mine)
+
+    async def get_product(self, product_id: int) -> Product | None:
+        return next((p for p in self.products if p.id == product_id), None)
+
+    async def list_variants(self, product_id: int) -> list[Variant]:
+        return [v for v in self.variants if v.product_id == product_id]
+
+
+class InMemoryFaq:
+    def __init__(self, entries: dict[str, str] | None = None) -> None:
+        self.entries = entries or {}
+
+    async def get(self, topic: str) -> str | None:
+        return self.entries.get(topic)

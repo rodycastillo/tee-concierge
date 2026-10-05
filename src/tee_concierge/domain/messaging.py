@@ -60,6 +60,7 @@ class Reply:
     body: str
     options: tuple[Option, ...] = ()
     list_button: str = "Ver opciones"
+    image_url: str | None = None  # header image; WhatsApp allows it on button messages only
 
     @property
     def kind(self) -> ReplyKind:
@@ -85,6 +86,8 @@ class Reply:
                 raise ValueError(f"option id too long: {option.id!r}")
             if option.description and len(option.description) > ROW_DESCRIPTION_MAX:
                 raise ValueError(f"option description too long: {option.description!r}")
+        if self.image_url and kind is not ReplyKind.BUTTONS:
+            raise ValueError("image_url is only supported on button messages")
         if kind is ReplyKind.LIST and len(self.list_button) > LIST_BUTTON_MAX:
             raise ValueError(f"list_button must be at most {LIST_BUTTON_MAX} chars")
 

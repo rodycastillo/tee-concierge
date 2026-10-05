@@ -11,6 +11,10 @@ from tee_concierge.application.engine.engine import MenuEngine
 from tee_concierge.application.process import ProcessInboundMessage
 from tee_concierge.config import Settings, get_settings
 from tee_concierge.domain.ports import MessageGateway
+from tee_concierge.infrastructure.persistence.catalog_repository import (
+    SqlCatalogRepository,
+    SqlFaqRepository,
+)
 from tee_concierge.infrastructure.persistence.database import create_engine, create_sessionmaker
 from tee_concierge.infrastructure.persistence.repository import (
     SqlConversationRepository,
@@ -50,6 +54,8 @@ async def startup(ctx: dict[str, Any]) -> None:
         lock=RedisConversationLock(redis),
         responder=MenuEngine(
             conversations=SqlConversationRepository(sessions),
+            catalog=SqlCatalogRepository(sessions),
+            faq=SqlFaqRepository(sessions),
             store=StoreInfo(
                 name=settings.store_name,
                 contact_phone=settings.store_contact_phone,

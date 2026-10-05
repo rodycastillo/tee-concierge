@@ -5,7 +5,8 @@ import structlog
 
 from tee_concierge.application.content import es
 from tee_concierge.application.content.store import StoreInfo
-from tee_concierge.application.engine.menu import CONTACT, MAIN, build_registry
+from tee_concierge.application.engine.menu import build_registry
+from tee_concierge.application.engine.nav import CONTACT, MAIN
 from tee_concierge.application.engine.nodes import NodeContext, NodeRegistry
 from tee_concierge.application.engine.routing import decode, encode
 from tee_concierge.domain.messaging import (
@@ -15,7 +16,7 @@ from tee_concierge.domain.messaging import (
     Option,
     Reply,
 )
-from tee_concierge.domain.ports import ConversationRepository
+from tee_concierge.domain.ports import CatalogRepository, ConversationRepository, FaqRepository
 
 log = structlog.get_logger()
 
@@ -39,11 +40,15 @@ class MenuEngine:
         self,
         conversations: ConversationRepository,
         store: StoreInfo,
+        catalog: CatalogRepository,
+        faq: FaqRepository,
         registry: NodeRegistry | None = None,
         clock: Callable[[], datetime] = _utcnow,
     ) -> None:
         self._conversations = conversations
         self._store = store
+        self._catalog = catalog
+        self._faq = faq
         self._registry = registry or build_registry()
         self._clock = clock
 
@@ -109,5 +114,11 @@ class MenuEngine:
         if node is None:  # state points at a node that no longer exists
             node = self._registry.get(MAIN)
         assert node is not None  # noqa: S101
-        ctx = NodeContext(store=self._store, args=args, profile_name=message.profile_name)
+        ctx = NodeContext(
+            store=self._store,
+            catalog=self._catalog,
+            faq=self._faq,
+            args=args,
+            profile_name=message.profile_name,
+        )
         return await node.handler(ctx)

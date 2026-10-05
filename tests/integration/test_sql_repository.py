@@ -76,3 +76,31 @@ async def test_conversation_state_round_trips_and_updates(tmp_path: Path) -> Non
     state = await conversations.get("51911111111")
     assert state == ConversationState("51911111111", "main", 0, datetime(2026, 1, 2, tzinfo=UTC))
     await engine.dispose()
+
+
+async def test_catalog_queries_and_seed_are_idempotent(tmp_path: Path) -> None:
+    from tee_concierge.infrastructure.persistence.catalog_repository import (
+        SqlCatalogRepository,
+        SqlFaqRepository,
+    )
+    from tee_concierge.seed import seed
+
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path}/catalog.db")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    sessions = create_sessionmaker(engine)
+
+    assert await seed(sessions) is True
+    assert await seed(sessions) is False  # never overwrites existing data
+
+    catalog = SqlCatalogRepository(sessions)
+    categories = await catalog.list_categories()
+    assert [c.name for c in categories] == ["Básicas", "Estampadas", "Oversize"]
+    products, total = await catalog.list_products(categories[0].id, offset=1, limit=2)
+    assert total == 3 and len(products) == 2
+    variants = await catalog.list_variants(products[0].id)
+    assert {v.size for v in variants} == {"S", "M", "L", "XL"}
+    assert await catalog.get_product(99999) is None
+    assert await SqlFaqRepository(sessions).get("shipping") is not None
+    assert await SqlFaqRepository(sessions).get("nope") is None
+    await engine.dispose()
