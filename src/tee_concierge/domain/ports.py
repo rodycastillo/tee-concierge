@@ -4,8 +4,10 @@ from typing import Protocol
 from tee_concierge.domain.catalog import Category, Product, Variant
 from tee_concierge.domain.messaging import (
     ConversationState,
+    HistoryMessage,
     InboundMessage,
     Reply,
+    StatusUpdate,
     StoredReply,
 )
 
@@ -24,6 +26,17 @@ class MessageRepository(Protocol):
     async def add_outbound(self, phone: str, reply: Reply, wamid: str | None) -> None: ...
 
     async def list_outbound(self, phone: str, after_id: int = 0) -> list[StoredReply]: ...
+
+    async def update_status(self, update: StatusUpdate) -> bool:
+        """Apply a delivery status to an outbound message. Statuses never move backwards.
+        Returns False if the message is unknown."""
+        ...
+
+    async def list_history(
+        self, phone: str, limit: int = 50, before_id: int | None = None
+    ) -> list[HistoryMessage]:
+        """Both directions, newest first."""
+        ...
 
 
 class ConversationRepository(Protocol):
@@ -63,6 +76,10 @@ class JobQueue(Protocol):
 class MessageGateway(Protocol):
     async def send(self, to: str, reply: Reply) -> str | None:
         """Send a text, buttons or list message. Returns the provider's message id."""
+        ...
+
+    async def mark_read(self, wamid: str) -> None:
+        """Show the customer the blue ticks for an inbound message."""
         ...
 
 

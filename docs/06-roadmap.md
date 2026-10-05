@@ -32,9 +32,9 @@ Each phase ends with something demoable, and every phase keeps CI green.
 - FAQ nodes: sizes, shipping, payment, returns, hours and location, from editable content
 - **Done when** a customer can go from "Hola" to a product's stock for a size and color, using taps only.
 
-## Phase 5: Contact and message tracking
+## Phase 5: Contact and message tracking (done)
 - "Contáctanos" node and keyword shortcuts (number, `wa.me` link, hours from config)
-- Message status tracking (sent, delivered, read), conversation history
+- Message status tracking (accepted, sent, delivered, read, failed; never moves backwards), inbound messages marked as read, conversation history query
 - **Done when** every menu leaf can reach "Contáctanos" and statuses are stored.
 
 ## Phase 6: Admin and observability

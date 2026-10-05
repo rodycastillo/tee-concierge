@@ -6,10 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tee_concierge.domain.messaging import (
     ConversationState,
+    DeliveryStatus,
+    HistoryMessage,
     InboundMessage,
     MessageType,
     Option,
     Reply,
+    StatusUpdate,
     StoredReply,
 )
 from tee_concierge.infrastructure.persistence.models import ConversationRow, MessageRow
@@ -82,6 +85,8 @@ class SqlMessageRepository:
                     ],
                     sent_at=now,
                     processed_at=now,
+                    status=DeliveryStatus.ACCEPTED.value,
+                    status_at=now,
                 )
             )
 
@@ -106,6 +111,39 @@ class SqlMessageRepository:
                     sent_at=r.sent_at,
                 )
                 for r in rows
+            ]
+
+    async def update_status(self, update: StatusUpdate) -> bool:
+        async with self._sessions() as session, session.begin():
+            row = await session.scalar(
+                select(MessageRow).where(
+                    MessageRow.wamid == update.wamid, MessageRow.direction == "out"
+                )
+            )
+            if row is None:
+                return False
+            current = DeliveryStatus(row.status) if row.status else DeliveryStatus.ACCEPTED
+            # Receipts can arrive out of order: never move backwards, and a late
+            # "failed" must not overwrite a delivered or read message.
+            if update.status.rank > current.rank or (
+                update.status is DeliveryStatus.FAILED
+                and current.rank < DeliveryStatus.DELIVERED.rank
+            ):
+                row.status = update.status.value
+                row.status_at = update.at
+                row.status_error = update.error
+        return True
+
+    async def list_history(
+        self, phone: str, limit: int = 50, before_id: int | None = None
+    ) -> list[HistoryMessage]:
+        query = select(MessageRow).where(MessageRow.phone == phone)
+        if before_id is not None:
+            query = query.where(MessageRow.id < before_id)
+        async with self._sessions() as session:
+            rows = await session.scalars(query.order_by(MessageRow.id.desc()).limit(limit))
+            return [
+                HistoryMessage(r.id, r.direction, r.type, r.body, r.status, r.sent_at) for r in rows
             ]
 
 

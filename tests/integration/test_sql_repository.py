@@ -104,3 +104,49 @@ async def test_catalog_queries_and_seed_are_idempotent(tmp_path: Path) -> None:
     assert await SqlFaqRepository(sessions).get("shipping") is not None
     assert await SqlFaqRepository(sessions).get("nope") is None
     await engine.dispose()
+
+
+async def test_delivery_status_only_moves_forward_and_history_lists_both_directions(
+    repo: SqlMessageRepository,
+) -> None:
+    from tee_concierge.domain.messaging import DeliveryStatus, StatusUpdate
+
+    at = datetime(2026, 10, 5, tzinfo=UTC)
+    [msg] = parse_inbound_messages(text_payload("51911111111", "Hola", "in.1"))
+    await repo.add_inbound(msg)
+    await repo.add_outbound("51911111111", Reply("Hola!"), "out.1")
+
+    def status(value: DeliveryStatus, error: str | None = None) -> StatusUpdate:
+        return StatusUpdate("out.1", value, at, error)
+
+    async def current() -> str | None:
+        return next(
+            m for m in await repo.list_history("51911111111") if m.direction == "out"
+        ).status
+
+    assert await current() == "accepted"
+    assert await repo.update_status(status(DeliveryStatus.READ)) is True
+    await repo.update_status(status(DeliveryStatus.DELIVERED))  # late, out of order
+    assert await current() == "read"
+    await repo.update_status(status(DeliveryStatus.FAILED, "late"))  # must not overwrite read
+    assert await current() == "read"
+    assert await repo.update_status(StatusUpdate("nope", DeliveryStatus.SENT, at)) is False
+
+    history = await repo.list_history("51911111111")
+    assert [m.direction for m in history] == ["out", "in"]  # newest first
+    older = await repo.list_history("51911111111", before_id=history[0].id)
+    assert [m.direction for m in older] == ["in"]
+
+
+async def test_failed_status_is_recorded_when_nothing_better_happened(
+    repo: SqlMessageRepository,
+) -> None:
+    from tee_concierge.domain.messaging import DeliveryStatus, StatusUpdate
+
+    await repo.add_outbound("51911111111", Reply("Hola!"), "out.1")
+    await repo.update_status(
+        StatusUpdate("out.1", DeliveryStatus.FAILED, datetime(2026, 10, 5, tzinfo=UTC), "no wa")
+    )
+
+    [row] = await repo.list_history("51911111111")
+    assert row.status == "failed"

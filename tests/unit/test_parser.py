@@ -1,7 +1,11 @@
 from typing import Any
 
-from tee_concierge.domain.messaging import MessageType
-from tee_concierge.infrastructure.whatsapp.parser import parse_inbound_messages
+from tee_concierge.domain.messaging import DeliveryStatus, MessageType
+from tee_concierge.infrastructure.whatsapp.parser import (
+    parse_inbound_messages,
+    parse_statuses,
+    parse_webhook,
+)
 from tee_concierge.infrastructure.whatsapp.simulator import text_payload
 
 
@@ -55,3 +59,37 @@ def test_status_callbacks_and_garbage_are_ignored() -> None:
     assert parse_inbound_messages({}) == []
     assert parse_inbound_messages({"entry": "nope"}) == []
     assert parse_inbound_messages(_wrap({"type": "text"}) | {"x": 1}) == []  # no id
+
+
+def _statuses(*items: dict[str, Any]) -> dict[str, Any]:
+    return {"entry": [{"changes": [{"value": {"statuses": list(items)}}]}]}
+
+
+def test_delivery_receipts_are_parsed() -> None:
+    payload = _statuses(
+        {
+            "id": "o1",
+            "status": "delivered",
+            "timestamp": "1700000000",
+            "recipient_id": "51911111111",
+        },
+        {
+            "id": "o2",
+            "status": "failed",
+            "errors": [{"code": 131047, "title": "Re-engagement message"}],
+        },
+        {"id": "o3", "status": "weird"},  # unknown status ignored
+        {"status": "read"},  # no id ignored
+    )
+
+    first, second = parse_statuses(payload)
+
+    assert (first.wamid, first.status) == ("o1", DeliveryStatus.DELIVERED)
+    assert (second.status, second.error) == (DeliveryStatus.FAILED, "Re-engagement message")
+
+
+def test_parse_webhook_separates_messages_from_statuses() -> None:
+    parsed = parse_webhook(text_payload("51911111111", "Hola", "w1"))
+    assert len(parsed.messages) == 1 and parsed.statuses == []
+    only_status = parse_webhook(_statuses({"id": "o1", "status": "read"}))
+    assert only_status.messages == [] and len(only_status.statuses) == 1

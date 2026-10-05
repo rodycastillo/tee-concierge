@@ -1,13 +1,13 @@
 import pytest
 
 from tee_concierge.application.ingest import IngestWebhook
-from tee_concierge.infrastructure.whatsapp.parser import parse_inbound_messages
+from tee_concierge.infrastructure.whatsapp.parser import parse_webhook
 from tee_concierge.infrastructure.whatsapp.simulator import text_payload
 from tests.fakes import InMemoryMessageRepository, RecordingQueue
 
 
 def _ingest(repo: InMemoryMessageRepository, queue: RecordingQueue) -> IngestWebhook:
-    return IngestWebhook(repo, queue, parse_inbound_messages)
+    return IngestWebhook(repo, queue, parse_webhook)
 
 
 async def test_new_message_is_stored_and_enqueued_once() -> None:
@@ -39,3 +39,31 @@ async def test_retry_re_enqueues_a_message_stored_but_never_enqueued() -> None:
     assert await ingest.execute(payload) == 0
 
     assert queue.jobs == ["wamid.1"]
+
+
+async def test_delivery_receipts_update_known_messages_and_ignore_unknown_ones() -> None:
+    from tee_concierge.domain.messaging import Reply
+
+    repo, queue = InMemoryMessageRepository(), RecordingQueue()
+    await repo.add_outbound("51911111111", Reply("hola"), "out.1")
+    receipts = {
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "statuses": [
+                                {"id": "out.1", "status": "delivered"},
+                                {"id": "ghost", "status": "read"},
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    assert await _ingest(repo, queue).execute(receipts) == 0
+
+    assert [s.wamid for s in repo.statuses] == ["out.1"]
+    assert queue.jobs == []  # receipts are never processed as customer messages

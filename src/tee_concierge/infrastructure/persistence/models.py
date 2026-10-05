@@ -45,6 +45,9 @@ class MessageRow(Base):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str | None] = mapped_column(String(16))  # outbound delivery status
+    status_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status_error: Mapped[str | None] = mapped_column(String(200))
 
 
 class ConversationRow(Base):

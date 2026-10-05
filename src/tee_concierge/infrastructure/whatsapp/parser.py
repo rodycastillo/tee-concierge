@@ -1,7 +1,13 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from tee_concierge.domain.messaging import InboundMessage, MessageType
+from tee_concierge.domain.messaging import (
+    DeliveryStatus,
+    InboundMessage,
+    MessageType,
+    ParsedWebhook,
+    StatusUpdate,
+)
 
 
 def parse_inbound_messages(payload: dict[str, Any]) -> list[InboundMessage]:
@@ -22,6 +28,33 @@ def parse_inbound_messages(payload: dict[str, Any]) -> list[InboundMessage]:
                 if parsed is not None:
                     messages.append(parsed)
     return messages
+
+
+_META_STATUSES = {"sent", "delivered", "read", "failed"}
+
+
+def parse_statuses(payload: dict[str, Any]) -> list[StatusUpdate]:
+    """Delivery receipts (sent/delivered/read/failed) for messages we sent."""
+    updates: list[StatusUpdate] = []
+    for entry in _as_list(payload.get("entry")):
+        for change in _as_list(_as_dict(entry).get("changes")):
+            value = _as_dict(_as_dict(change).get("value"))
+            for raw in map(_as_dict, _as_list(value.get("statuses"))):
+                wamid, status = raw.get("id"), raw.get("status")
+                if not isinstance(wamid, str) or status not in _META_STATUSES:
+                    continue
+                errors = _as_list(raw.get("errors"))
+                error = _as_dict(errors[0]).get("title") if errors else None
+                updates.append(
+                    StatusUpdate(
+                        wamid, DeliveryStatus(status), _parse_timestamp(raw.get("timestamp")), error
+                    )
+                )
+    return updates
+
+
+def parse_webhook(payload: dict[str, Any]) -> ParsedWebhook:
+    return ParsedWebhook(parse_inbound_messages(payload), parse_statuses(payload))
 
 
 def _parse_one(raw: dict[str, Any], names: dict[Any, Any]) -> InboundMessage | None:

@@ -11,7 +11,7 @@ from tee_concierge.config import get_settings
 from tee_concierge.infrastructure.persistence.database import create_engine, create_sessionmaker
 from tee_concierge.infrastructure.persistence.repository import SqlMessageRepository
 from tee_concierge.infrastructure.queue.arq_queue import ArqJobQueue
-from tee_concierge.infrastructure.whatsapp.parser import parse_inbound_messages
+from tee_concierge.infrastructure.whatsapp.parser import parse_webhook
 from tee_concierge.interfaces.api import dev, webhook
 from tee_concierge.logging import configure_logging
 
@@ -23,7 +23,7 @@ async def default_lifespan(app: FastAPI) -> AsyncIterator[None]:
     pool = await create_pool(RedisSettings.from_dsn(settings.redis_url))
     repo = SqlMessageRepository(create_sessionmaker(engine))
     app.state.repo = repo
-    app.state.ingest = IngestWebhook(repo, ArqJobQueue(pool), parse_inbound_messages)
+    app.state.ingest = IngestWebhook(repo, ArqJobQueue(pool), parse_webhook)
     try:
         yield
     finally:

@@ -18,6 +18,14 @@ class WhatsAppCloudGateway:
         self._url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
         self._headers = {"Authorization": f"Bearer {access_token}"}
 
+    async def mark_read(self, wamid: str) -> None:
+        response = await self._http.post(
+            self._url,
+            headers=self._headers,
+            json={"messaging_product": "whatsapp", "status": "read", "message_id": wamid},
+        )
+        response.raise_for_status()
+
     async def send(self, to: str, reply: Reply) -> str | None:
         response = await self._http.post(
             self._url, headers=self._headers, json=build_send_payload(to, reply)

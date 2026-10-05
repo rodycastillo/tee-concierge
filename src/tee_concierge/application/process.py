@@ -31,6 +31,12 @@ class ProcessInboundMessage:
         self._lock = lock
         self._responder = responder
 
+    async def _mark_read(self, wamid: str) -> None:
+        try:
+            await self._gateway.mark_read(wamid)
+        except Exception:  # cosmetic: never block the reply because of blue ticks
+            log.warning("mark_read_failed", wamid=wamid, exc_info=True)
+
     async def execute(self, wamid: str) -> None:
         message = await self._repo.get_unprocessed(wamid)
         if message is None:
@@ -41,6 +47,7 @@ class ProcessInboundMessage:
             message = await self._repo.get_unprocessed(wamid)
             if message is None:
                 return
+            await self._mark_read(wamid)
             reply = await self._responder.reply_to(message)
             sent_id = await self._gateway.send(message.phone, reply)
             await self._repo.add_outbound(message.phone, reply, sent_id)

@@ -2,7 +2,7 @@
 
 A WhatsApp assistant for a T-shirt store, in Spanish. It greets customers with an interactive menu and guides them through catalog, sizes, prices, stock, shipping, payment and returns using tappable options, and shows how to contact the store when a person is needed.
 
-> **Status:** Phases 1 to 4 done (foundation, messaging core, conversation engine, catalog and FAQ). Phase 5 is next. See [docs/](docs/).
+> **Status:** Phases 1 to 5 done (foundation, messaging core, conversation engine, catalog and FAQ, contact and delivery tracking). Phase 6 (admin and observability) is next. See [docs/](docs/).
 
 ## Quick start
 

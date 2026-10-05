@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from tee_concierge.application.ingest import IngestWebhook
 from tee_concierge.config import Settings, get_settings
-from tee_concierge.infrastructure.whatsapp.parser import parse_inbound_messages
+from tee_concierge.infrastructure.whatsapp.parser import parse_webhook
 from tee_concierge.infrastructure.whatsapp.signature import sign
 from tee_concierge.infrastructure.whatsapp.simulator import text_payload
 from tee_concierge.interfaces.api.main import create_app
@@ -32,7 +32,7 @@ def client(queue: RecordingQueue) -> Iterator[TestClient]:
     app = create_app(lifespan=_no_lifespan)
     repo = InMemoryMessageRepository()
     app.state.repo = repo
-    app.state.ingest = IngestWebhook(repo, queue, parse_inbound_messages)
+    app.state.ingest = IngestWebhook(repo, queue, parse_webhook)
     app.dependency_overrides[get_settings] = lambda: Settings(
         _env_file=None, whatsapp_app_secret=SECRET, whatsapp_verify_token="verify-me"
     )

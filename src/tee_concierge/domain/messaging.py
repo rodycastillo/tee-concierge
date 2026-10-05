@@ -92,6 +92,53 @@ class Reply:
             raise ValueError(f"list_button must be at most {LIST_BUTTON_MAX} chars")
 
 
+class DeliveryStatus(StrEnum):
+    """Lifecycle of an outbound message. Order matters: statuses only move forward."""
+
+    ACCEPTED = "accepted"  # the Cloud API took it
+    SENT = "sent"
+    DELIVERED = "delivered"
+    READ = "read"
+    FAILED = "failed"
+
+    @property
+    def rank(self) -> int:
+        return _STATUS_RANK[self]
+
+
+_STATUS_RANK = {
+    DeliveryStatus.ACCEPTED: 0,
+    DeliveryStatus.SENT: 1,
+    DeliveryStatus.DELIVERED: 2,
+    DeliveryStatus.READ: 3,
+    DeliveryStatus.FAILED: 1,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class StatusUpdate:
+    wamid: str
+    status: DeliveryStatus
+    at: datetime
+    error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedWebhook:
+    messages: list[InboundMessage]
+    statuses: list[StatusUpdate]
+
+
+@dataclass(frozen=True, slots=True)
+class HistoryMessage:
+    id: int
+    direction: str  # "in" | "out"
+    type: str
+    body: str | None
+    status: str | None
+    at: datetime
+
+
 @dataclass(frozen=True, slots=True)
 class StoredReply:
     id: int

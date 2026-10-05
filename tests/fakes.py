@@ -3,7 +3,14 @@ from contextlib import asynccontextmanager
 from decimal import Decimal
 
 from tee_concierge.domain.catalog import Category, Product, Variant
-from tee_concierge.domain.messaging import ConversationState, InboundMessage, Reply, StoredReply
+from tee_concierge.domain.messaging import (
+    ConversationState,
+    HistoryMessage,
+    InboundMessage,
+    Reply,
+    StatusUpdate,
+    StoredReply,
+)
 
 
 class InMemoryMessageRepository:
@@ -11,6 +18,7 @@ class InMemoryMessageRepository:
         self.inbound: dict[str, InboundMessage] = {}
         self.processed: set[str] = set()
         self.outbound: list[tuple[str, Reply, str | None]] = []
+        self.statuses: list[StatusUpdate] = []
 
     async def add_inbound(self, message: InboundMessage) -> bool:
         if message.wamid in self.inbound:
@@ -32,6 +40,17 @@ class InMemoryMessageRepository:
     async def list_outbound(self, phone: str, after_id: int = 0) -> list[StoredReply]:
         return []
 
+    async def update_status(self, update: StatusUpdate) -> bool:
+        known = any(w == update.wamid for _, _, w in self.outbound)
+        if known:
+            self.statuses.append(update)
+        return known
+
+    async def list_history(
+        self, phone: str, limit: int = 50, before_id: int | None = None
+    ) -> list[HistoryMessage]:
+        return []
+
 
 class RecordingQueue:
     def __init__(self, fail_times: int = 0) -> None:
@@ -48,6 +67,13 @@ class RecordingQueue:
 class RecordingGateway:
     def __init__(self) -> None:
         self.sent: list[tuple[str, Reply]] = []
+        self.read: list[str] = []
+        self.fail_mark_read = False
+
+    async def mark_read(self, wamid: str) -> None:
+        if self.fail_mark_read:
+            raise ConnectionError("graph api down")
+        self.read.append(wamid)
 
     async def send(self, to: str, reply: Reply) -> str | None:
         self.sent.append((to, reply))

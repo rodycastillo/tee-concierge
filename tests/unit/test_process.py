@@ -40,3 +40,20 @@ async def test_unknown_message_is_skipped() -> None:
     _, gateway, process = await _setup()
     await process.execute("does-not-exist")
     assert gateway.sent == []
+
+
+async def test_inbound_message_is_marked_read_before_replying() -> None:
+    _, gateway, process = await _setup()
+
+    await process.execute("wamid.1")
+
+    assert gateway.read == ["wamid.1"]
+
+
+async def test_a_failing_mark_read_does_not_block_the_reply() -> None:
+    _, gateway, process = await _setup()
+    gateway.fail_mark_read = True
+
+    await process.execute("wamid.1")
+
+    assert len(gateway.sent) == 1
