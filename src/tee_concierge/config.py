@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     whatsapp_app_secret: SecretStr = SecretStr("")
     whatsapp_verify_token: SecretStr = SecretStr("change-me")
 
-    store_name: str = "Tee Concierge"
+    # The business is described by the menu file; these override its values when set, so real
+    # contact data never has to be committed.
+    menu_config: str = "examples/tshirt-store/menu.yaml"
+    store_name: str = ""
     store_contact_phone: str = ""
     store_hours: str = ""
 

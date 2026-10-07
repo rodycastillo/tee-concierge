@@ -9,4 +9,4 @@ def test_defaults_do_not_expose_secrets(monkeypatch: pytest.MonkeyPatch) -> None
     settings = Settings(_env_file=None)
 
     assert "super-secret" not in repr(settings)
-    assert settings.store_name == "Tee Concierge"
+    assert settings.menu_config.endswith("menu.yaml")

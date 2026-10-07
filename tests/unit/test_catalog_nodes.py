@@ -1,19 +1,23 @@
 from decimal import Decimal
 
+from tee_concierge.application.content.messages import Messages
 from tee_concierge.application.content.store import StoreInfo
 from tee_concierge.application.engine import catalog_nodes
-from tee_concierge.application.engine.nodes import NodeContext
+from tee_concierge.application.engine.nodes import NavTargets, NodeContext
 from tee_concierge.application.engine.routing import encode
 from tee_concierge.domain.catalog import format_price
 from tee_concierge.domain.messaging import Reply, ReplyKind
-from tests.fakes import InMemoryCatalog, InMemoryFaq
+from tests.fakes import InMemoryCatalog
 
 STORE = StoreInfo(name="Tee Concierge")
 CATALOG = InMemoryCatalog()
 
 
-def _ctx(*args: str) -> NodeContext:
-    return NodeContext(STORE, CATALOG, InMemoryFaq(), args)
+NAV = NavTargets(contact="contact", catalog="catalog")
+
+
+def _ctx(*args: str, catalog: InMemoryCatalog = CATALOG) -> NodeContext:
+    return NodeContext(STORE, catalog, Messages(), NAV, args)
 
 
 def _ids(reply: Reply) -> list[str]:
@@ -51,9 +55,8 @@ async def test_products_are_paginated_when_a_category_is_large() -> None:
             ]
             return fake[offset : offset + limit], len(fake)
 
-    ctx = NodeContext(STORE, Many(), InMemoryFaq(), ("1", "0"))
-    first = await catalog_nodes.category(ctx)
-    last = await catalog_nodes.category(NodeContext(STORE, Many(), InMemoryFaq(), ("1", "2")))
+    first = await catalog_nodes.category(_ctx("1", "0", catalog=Many()))
+    last = await catalog_nodes.category(_ctx("1", "2", catalog=Many()))
 
     assert len(first.options) == 10 and encode("cat", "1", "1") in _ids(first)
     assert "página 1 de 3" in first.body

@@ -1,0 +1,62 @@
+# Tienda de polos (datos de demostración). Una configuración = un negocio.
+business:
+  name: Tee Concierge
+  contact_phone: "51900000000"   # dígitos con código de país; mejor usar STORE_CONTACT_PHONE
+  hours: "Lun a Sáb, 10:00 a 19:00"
+
+menu:
+  - id: catalog
+    type: catalog
+    title: "👕 Ver catálogo"
+    keywords: [catalogo, polos, polo, productos]
+  - id: sizes
+    type: text
+    title: "📏 Guía de tallas"
+    keywords: [talla, tallas, medidas]
+    body: |
+      📏 *Guía de tallas*
+
+      S: pecho 96 cm
+      M: pecho 102 cm
+      L: pecho 108 cm
+      XL: pecho 114 cm
+
+      Si dudas entre dos tallas, elige la mayor.
+  - id: shipping
+    type: text
+    title: "🚚 Envíos"
+    keywords: [envio, envios, delivery, despacho]
+    body: |
+      🚚 *Envíos*
+
+      Lima: 24 a 48 horas.
+      Provincias: 3 a 5 días hábiles.
+      El costo se calcula según la zona.
+  - id: payment
+    type: text
+    title: "💳 Formas de pago"
+    keywords: [pago, pagos, yape, plin, transferencia, tarjeta]
+    body: |
+      💳 *Formas de pago*
+
+      Yape, Plin, transferencia bancaria y tarjeta.
+  - id: returns
+    type: text
+    title: "🔁 Devoluciones"
+    keywords: [cambio, cambios, devolucion, devoluciones]
+    body: |
+      🔁 *Cambios y devoluciones*
+
+      Tienes 7 días para cambiar tu polo, sin uso y con etiqueta.
+  - id: hours
+    type: text
+    title: "🕒 Horarios"
+    keywords: [horario, horarios, ubicacion, direccion]
+    body: |
+      🕒 *Horarios*
+
+      {hours}
+  - id: contact
+    type: contact
+    title: "📞 Contáctanos"
+    keywords: [asesor, humano, persona, ayuda]

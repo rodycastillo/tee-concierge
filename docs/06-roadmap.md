@@ -38,12 +38,19 @@ Each phase ends with something demoable, and every phase keeps CI green.
 - **Done when** every menu leaf can reach "Contáctanos" and statuses are stored.
 
 ## Phase 6: Admin and observability (done, tracing deferred)
-- Admin API (catalog, FAQ content, conversations), auth
+- Admin API (catalog, conversations), auth
 - Metrics, tracing, menu usage reports
 - Rate limits and security review
-- **Done when** the owner can change a product or FAQ answer without touching code.
+- **Done when** the owner can change a product without touching code.
 
-## Phase 7: Showcase and stretch (in progress)
+## Phase 8: Configurable menu for any business (done)
+- Menu as YAML: node types `menu`, `text`, `contact`, `catalog`; codes (positional or explicit) tappable or typed
+- `Messages` with Spanish defaults, overridable per business; env overrides for contact data
+- Validation (schema, structural rules, dry-run render), `tee-menu validate`, CI gate, worker fails fast on a broken file
+- Editable FAQ table removed; two examples: T-shirt store and dental clinic
+- **Done when** a second business runs from a new YAML file with no code change. Later: admin API import of the menu file.
+
+## Phase 7: Showcase and stretch (done)
 - Public demo deployment, GIF or video, polished README and diagrams, "lessons learned"
 - **Stretch options (pick any):** order status lookup, cart and payment link, optional LLM fallback node, template notifications.
 - **Done when** a recruiter can understand the project in 5 minutes and try it in 1 command.

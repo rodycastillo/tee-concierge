@@ -1,6 +1,6 @@
 UV ?= $(shell command -v uv || echo $(HOME)/.local/bin/uv)
 
-.PHONY: smoke seed migrate chat install up down logs test lint fmt typecheck arch check run
+.PHONY: menu smoke seed migrate chat install up down logs test lint fmt typecheck arch check run
 install:   ## Install dependencies
 	$(UV) sync
 up:        ## Start api, worker, postgres, redis
@@ -21,12 +21,14 @@ typecheck:
 	$(UV) run mypy
 arch:      ## Verify layer rules
 	$(UV) run lint-imports
-check: lint typecheck arch test   ## Everything CI runs
+check: lint typecheck arch menu test   ## Everything CI runs
 migrate:   ## Apply database migrations (needs DATABASE_URL)
 	$(UV) run alembic upgrade head
 chat:      ## Chat with the bot in the terminal (fake gateway, stack must be up)
 	$(UV) run tee-chat
-seed:      ## Load the synthetic demo catalog and FAQ (idempotent)
+menu:      ## Validate every menu file under examples/ (schema, rules, dry-run render)
+	$(UV) run tee-menu validate examples/*/menu.yaml
+seed:      ## Load the synthetic demo catalog (idempotent; only the t-shirt store uses it)
 	$(UV) run python -m tee_concierge.seed
 smoke:     ## End-to-end test against the running stack (make up && make seed first)
 	$(UV) run python scripts/smoke_test.py

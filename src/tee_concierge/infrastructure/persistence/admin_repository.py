@@ -11,7 +11,6 @@ from tee_concierge.domain.messaging import UsageSummary
 from tee_concierge.infrastructure.persistence.catalog_repository import _product
 from tee_concierge.infrastructure.persistence.models import (
     CategoryRow,
-    FaqRow,
     MessageRow,
     NodeVisitRow,
     ProductRow,
@@ -113,15 +112,6 @@ class SqlAdminCatalogRepository:
             row.stock = stock
             await session.flush()
             return _variant(row)
-
-    async def set_faq(self, topic: str, body: str) -> None:
-        async with self._sessions() as session, session.begin():
-            await session.merge(FaqRow(topic=topic, body=body))
-
-    async def list_faq(self) -> dict[str, str]:
-        async with self._sessions() as session:
-            rows = await session.scalars(select(FaqRow).order_by(FaqRow.topic))
-            return {r.topic: r.body for r in rows}
 
 
 class SqlUsageRepository:

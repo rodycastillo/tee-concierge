@@ -1,0 +1,62 @@
+# Clínica dental (datos de demostración). Sin catálogo: solo menús y textos,
+# para demostrar que el bot sirve para cualquier negocio.
+business:
+  name: Sonrisa Clara
+  contact_phone: "51900000001"
+  hours: "Lun a Vie, 9:00 a 20:00 · Sáb, 9:00 a 13:00"
+
+messages:
+  welcome: "¡Hola! 👋 Bienvenido a {business}. ¿Cómo podemos cuidar tu sonrisa?"
+  welcome_named: "¡Hola, {name}! 👋 Bienvenido a {business}. ¿Cómo podemos cuidar tu sonrisa?"
+
+menu:
+  - id: services
+    type: menu
+    title: "🦷 Servicios"
+    keywords: [servicio, servicios, tratamiento, tratamientos]
+    body: "🦷 *Nuestros servicios*\n\nElige uno para ver el detalle:"
+    children:
+      - id: cleaning
+        type: text
+        title: "Limpieza dental"
+        keywords: [limpieza, profilaxis]
+        body: "Limpieza profunda y revisión general. Duración aproximada: 45 minutos."
+      - id: braces
+        type: text
+        title: "Ortodoncia"
+        keywords: [ortodoncia, brackets, frenillos]
+        body: "Evaluación gratuita. Te explicamos opciones de brackets metálicos y estéticos."
+      - id: whitening
+        type: text
+        title: "Blanqueamiento"
+        keywords: [blanqueamiento, blanquear]
+        body: "Blanqueamiento en consultorio, resultados en una sola sesión."
+  - id: appointments
+    type: text
+    title: "📅 Agendar una cita"
+    code: cita
+    keywords: [cita, citas, agendar, reservar]
+    body: |
+      📅 *Agendar una cita*
+
+      Escríbenos con tu nombre y el día que prefieres. Atendemos {hours}.
+  - id: prices
+    type: text
+    title: "💰 Precios"
+    keywords: [precio, precios, costo, cuanto cuesta]
+    body: "💰 *Precios*\n\nLa primera consulta es gratuita. Los tratamientos se cotizan tras la evaluación."
+  - id: location
+    type: text
+    title: "📍 Ubicación y horarios"
+    keywords: [ubicacion, direccion, horario, horarios]
+    body: "📍 *Ubicación y horarios*\n\nAv. Ejemplo 123, Lima.\n{hours}"
+  - id: emergency
+    type: text
+    title: "🚨 Emergencias"
+    code: urgencia
+    keywords: [emergencia, urgencia, dolor]
+    body: "🚨 *Emergencias*\n\nSi tienes dolor fuerte o un golpe, llámanos al +{phone} de inmediato."
+  - id: contact
+    type: contact
+    title: "📞 Contáctanos"
+    keywords: [asesor, humano, persona]

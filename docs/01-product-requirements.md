@@ -56,7 +56,7 @@ A small T-shirt store receives repetitive WhatsApp questions all day ("do you ha
 | FR-04 | Every bot reply includes options valid for the current context, and navigation (Volver, Menú principal) | MUST |
 | FR-05 | Resolve a tapped option from its id alone, even if stored state is stale | MUST |
 | FR-06 | Product, price, size and stock data come from the database | MUST |
-| FR-07 | FAQ answers come from editable content, not hard-coded strings | MUST |
+| FR-07 | Menu and answers come from a business's config file (ADR-0007), not hard-coded strings | MUST |
 | FR-08 | Free text: keyword shortcuts, otherwise "no entendí" and the current menu again | MUST |
 | FR-09 | "Contáctanos" node shows the store's contact number / `wa.me` link (configurable) and the opening hours | MUST |
 | FR-10 | Persist all messages with timestamps and delivery status | MUST |

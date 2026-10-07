@@ -107,15 +107,6 @@ def test_validation_errors_are_422_and_unknown_ids_404(client: TestClient) -> No
     assert bad.status_code == 422
 
 
-def test_faq_is_editable_and_listed(client: TestClient) -> None:
-    assert (
-        client.put("/admin/faq/shipping", json={"body": "Envío gratis"}, headers=KEY).status_code
-        == 200
-    )
-    assert client.get("/admin/faq", headers=KEY).json() == {"shipping": "Envío gratis"}
-    assert client.put("/admin/faq/unknown", json={"body": "x"}, headers=KEY).status_code == 422
-
-
 def test_stats_and_history_endpoints(client: TestClient) -> None:
     assert client.get("/admin/conversations/51911111111/messages", headers=KEY).json() == []
     stats = client.get("/admin/stats", headers=KEY).json()

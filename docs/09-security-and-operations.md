@@ -44,8 +44,6 @@ Suggested alerts: `tee_job_failures_total` increasing, `tee_webhook_requests_tot
 ```bash
 export KEY=$(grep ADMIN_API_KEY .env | cut -d= -f2)
 curl -H "X-Admin-Key: $KEY" localhost:8000/admin/stats
-curl -X PUT -H "X-Admin-Key: $KEY" -H 'content-type: application/json' \
-     -d '{"body":"Envíos a todo Lima en 24h"}' localhost:8000/admin/faq/shipping
 curl -X PATCH -H "X-Admin-Key: $KEY" -H 'content-type: application/json' \
      -d '{"stock": 12}' localhost:8000/admin/variants/5
 ```
@@ -59,5 +57,5 @@ Interactive docs are served at `/docs` (OpenAPI).
 - [ ] `ADMIN_API_KEY` set (`openssl rand -hex 32`), served only over HTTPS
 - [ ] The `/dev/*` routes are mounted only with the fake gateway; confirm they 404 in prod
 - [ ] Postgres and Redis not exposed publicly (compose publishes them for local dev only)
-- [ ] Real FAQ content and real products loaded (the seed is demo data)
+- [ ] Real menu file (`MENU_CONFIG`, checked with `tee-menu validate`) and, if it has a catalog, real products (the seed is demo data)
 - [ ] Backups for Postgres

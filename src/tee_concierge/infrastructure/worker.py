@@ -7,17 +7,14 @@ from arq.connections import RedisSettings
 from prometheus_client import start_http_server
 from redis.asyncio import Redis
 
-from tee_concierge.application.content.store import StoreInfo
 from tee_concierge.application.engine.engine import MenuEngine
 from tee_concierge.application.process import ProcessInboundMessage, ProcessOutcome
 from tee_concierge.config import Settings, get_settings
 from tee_concierge.domain.ports import MessageGateway
 from tee_concierge.infrastructure import metrics
+from tee_concierge.infrastructure.menu.loader import load_menu
 from tee_concierge.infrastructure.persistence.admin_repository import SqlUsageRepository
-from tee_concierge.infrastructure.persistence.catalog_repository import (
-    SqlCatalogRepository,
-    SqlFaqRepository,
-)
+from tee_concierge.infrastructure.persistence.catalog_repository import SqlCatalogRepository
 from tee_concierge.infrastructure.persistence.database import create_engine, create_sessionmaker
 from tee_concierge.infrastructure.persistence.repository import (
     SqlConversationRepository,
@@ -53,20 +50,22 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx.update(engine=engine, redis=redis, http=http)
     start_http_server(settings.metrics_port)
     sessions = create_sessionmaker(engine)
+    # Fails fast: a broken menu file stops the worker at startup instead of reaching a customer.
+    menu = load_menu(
+        settings.menu_config,
+        name=settings.store_name,
+        contact_phone=settings.store_contact_phone,
+        hours=settings.store_hours,
+    )
     ctx["process"] = ProcessInboundMessage(
         repo=SqlMessageRepository(sessions),
         gateway=build_gateway(settings, http),
         lock=RedisConversationLock(redis),
         responder=MenuEngine(
             conversations=SqlConversationRepository(sessions),
+            menu=menu,
             catalog=SqlCatalogRepository(sessions),
-            faq=SqlFaqRepository(sessions),
             usage=SqlUsageRepository(sessions),
-            store=StoreInfo(
-                name=settings.store_name,
-                contact_phone=settings.store_contact_phone,
-                hours=settings.store_hours,
-            ),
         ),
         limiter=RedisRateLimiter(redis, settings.rate_limit_per_minute),
     )

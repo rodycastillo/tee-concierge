@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tee_concierge.domain.catalog import Category, Product, Variant
 from tee_concierge.infrastructure.persistence.models import (
     CategoryRow,
-    FaqRow,
     ProductRow,
     VariantRow,
 )
@@ -65,13 +64,3 @@ class SqlCatalogRepository:
                 .order_by(VariantRow.id)
             )
             return [Variant(r.id, r.product_id, r.sku, r.size, r.color, r.stock) for r in rows]
-
-
-class SqlFaqRepository:
-    def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
-        self._sessions = sessions
-
-    async def get(self, topic: str) -> str | None:
-        async with self._sessions() as session:
-            row = await session.get(FaqRow, topic)
-        return row.body if row else None

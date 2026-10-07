@@ -138,14 +138,6 @@ class InMemoryCatalog:
         return [v for v in self.variants if v.product_id == product_id]
 
 
-class InMemoryFaq:
-    def __init__(self, entries: dict[str, str] | None = None) -> None:
-        self.entries = entries or {}
-
-    async def get(self, topic: str) -> str | None:
-        return self.entries.get(topic)
-
-
 class RecordingUsage:
     def __init__(self, fail: bool = False) -> None:
         self.visits: list[str] = []

@@ -1,4 +1,6 @@
-"""Synthetic demo catalog and FAQ. Fake data only: this repo is public.
+"""Synthetic demo catalog (for the T-shirt store example). Fake data only: this repo is public.
+
+Only businesses whose menu has a `catalog` node use it; others never need to run this.
 
 Run with `make seed` (or `python -m tee_concierge.seed`). Idempotent: it does nothing
 when categories already exist, so it never overwrites real data.
@@ -10,12 +12,10 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from tee_concierge.application.content import es
 from tee_concierge.config import get_settings
 from tee_concierge.infrastructure.persistence.database import create_engine, create_sessionmaker
 from tee_concierge.infrastructure.persistence.models import (
     CategoryRow,
-    FaqRow,
     ProductRow,
     VariantRow,
 )
@@ -98,13 +98,6 @@ DEMO_PRODUCTS: tuple[tuple[str, str, str, str, str, tuple[str, ...], tuple[int, 
     ),
 )
 
-FAQ_DEFAULTS = {
-    "sizes": es.SIZES,
-    "shipping": es.SHIPPING,
-    "payment": es.PAYMENT,
-    "returns": es.RETURNS,
-}
-
 
 async def seed(sessions: async_sessionmaker[AsyncSession]) -> bool:
     """Insert the demo data. Returns False when the database already has a catalog."""
@@ -141,8 +134,6 @@ async def seed(sessions: async_sessionmaker[AsyncSession]) -> bool:
                             stock=stock,
                         )
                     )
-        for topic, body in FAQ_DEFAULTS.items():
-            session.add(FaqRow(topic=topic, body=body))
     return True
 
 

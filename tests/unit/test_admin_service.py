@@ -47,18 +47,14 @@ async def test_text_that_would_break_a_whatsapp_message_is_rejected(admin: Catal
     with pytest.raises(InvalidInputError):
         await admin.create_product(1, "Polo", "10", description="x" * 701)
     with pytest.raises(InvalidInputError):
-        await admin.set_faq("shipping", "x" * 1001)
-    with pytest.raises(InvalidInputError):
         await admin.create_product(1, "   ", "10")
 
 
-async def test_stock_size_and_faq_topic_are_validated(admin: CatalogAdmin) -> None:
+async def test_stock_and_size_are_validated(admin: CatalogAdmin) -> None:
     with pytest.raises(InvalidInputError):
         await admin.set_stock(1, -1)
     with pytest.raises(InvalidInputError):
         await admin.create_variant(1, "SKU", "XXXL", "Negro", 1)
-    with pytest.raises(InvalidInputError):
-        await admin.set_faq("secrets", "hola")
 
 
 async def test_only_whitelisted_product_fields_can_change(admin: CatalogAdmin) -> None:

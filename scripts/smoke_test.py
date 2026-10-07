@@ -114,6 +114,11 @@ def main() -> None:
     )
     print("ok  catalog browsing: category > product > sizes > stock")
 
+    # 3b. Typed codes: "3" is the third option of the main menu, from any screen.
+    check("Envíos" in smoke.say("3")["body"], "typed code did not open its node")
+    check("Bienvenido" in smoke.say("0")["body"], "code 0 must return to the main menu")
+    print("ok  typed codes: '3' opens Envíos, '0' returns to the main menu")
+
     # 4. Free text: keyword shortcut and fallback.
     check(
         "Contáctanos" in smoke.say("quiero hablar con un asesor")["body"], "contact shortcut failed"

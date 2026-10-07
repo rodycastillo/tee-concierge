@@ -63,12 +63,6 @@ class CatalogRepository(Protocol):
     async def list_variants(self, product_id: int) -> list[Variant]: ...
 
 
-class FaqRepository(Protocol):
-    async def get(self, topic: str) -> str | None:
-        """Editable answer for a topic (sizes, shipping, payment, returns), if set."""
-        ...
-
-
 class AdminCatalogRepository(Protocol):
     """Write side of the catalog, used by the admin API."""
 
@@ -95,10 +89,6 @@ class AdminCatalogRepository(Protocol):
     ) -> Variant: ...
 
     async def set_stock(self, variant_id: int, stock: int) -> Variant: ...
-
-    async def set_faq(self, topic: str, body: str) -> None: ...
-
-    async def list_faq(self) -> dict[str, str]: ...
 
 
 class UsageRepository(Protocol):

@@ -1,4 +1,4 @@
-"""Validated catalog and FAQ management for the store owner.
+"""Validated catalog management for the store owner.
 
 Limits exist because everything saved here ends up inside a WhatsApp message, which
 rejects bodies over 1024 characters. Rejecting long text on save is better than a
@@ -13,8 +13,6 @@ from tee_concierge.domain.catalog import SIZE_ORDER, Category, Product, Variant
 from tee_concierge.domain.errors import InvalidInputError
 from tee_concierge.domain.ports import AdminCatalogRepository
 
-FAQ_TOPICS = ("sizes", "shipping", "payment", "returns")
-MAX_FAQ_CHARS = 1000
 MAX_DESCRIPTION_CHARS = 700
 MAX_NAME_CHARS = 120
 MAX_PRICE = Decimal("100000")
@@ -117,11 +115,3 @@ class CatalogAdmin:
 
     async def set_stock(self, variant_id: int, stock: int) -> Variant:
         return await self._repo.set_stock(variant_id, _stock(stock))
-
-    async def set_faq(self, topic: str, body: str) -> None:
-        if topic not in FAQ_TOPICS:
-            raise InvalidInputError(f"topic must be one of {', '.join(FAQ_TOPICS)}")
-        await self._repo.set_faq(topic, _text(body, "body", MAX_FAQ_CHARS))
-
-    async def list_faq(self) -> dict[str, str]:
-        return await self._repo.list_faq()

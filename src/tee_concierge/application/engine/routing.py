@@ -28,3 +28,10 @@ def normalize(text: str) -> str:
     decomposed = unicodedata.normalize("NFKD", text.lower())
     stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", " ", stripped).strip()
+
+
+def normalize_code(text: str) -> str:
+    """Canonical form of a typed or configured code: ' 1.2 ' -> '1.2', 'ENVÍOS' -> 'envios'."""
+    decomposed = unicodedata.normalize("NFKD", text.strip().lower())
+    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return re.sub(r"\s+", "", stripped)

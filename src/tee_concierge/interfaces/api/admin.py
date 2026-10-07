@@ -82,10 +82,6 @@ class StockIn(BaseModel):
     stock: int
 
 
-class FaqIn(BaseModel):
-    body: str
-
-
 def _category(c: Category) -> dict[str, Any]:
     return {"id": c.id, "name": c.name}
 
@@ -155,17 +151,6 @@ async def create_variant(product_id: int, body: VariantIn, admin: AdminDep) -> d
 @router.patch("/variants/{variant_id}")
 async def set_stock(variant_id: int, body: StockIn, admin: AdminDep) -> dict[str, Any]:
     return _variant(await admin.set_stock(variant_id, body.stock))
-
-
-@router.get("/faq")
-async def list_faq(admin: AdminDep) -> dict[str, str]:
-    return await admin.list_faq()
-
-
-@router.put("/faq/{topic}")
-async def set_faq(topic: str, body: FaqIn, admin: AdminDep) -> dict[str, str]:
-    await admin.set_faq(topic, body.body)
-    return {"topic": topic, "body": body.body.strip()}
 
 
 @router.get("/conversations/{phone}/messages")

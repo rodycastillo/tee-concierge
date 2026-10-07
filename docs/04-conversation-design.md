@@ -57,7 +57,7 @@ The "Estado de mi pedido" option is the one place where free text is expected (t
 | Sizes | `go:variants:<id>` | One row per size, listing the colors in stock, or "Agotada" |
 | Stock | `go:stock:<id>:<size>` | Per color: disponible / ¡últimas unidades! (3 or fewer) / agotado. Exact numbers are never shown |
 
-FAQ screens (sizes, shipping, payment, returns) read their text from `faq_entries`, falling back to a default, so the owner can change them without a deploy. On the 3-button product detail screen "Contáctanos" is omitted for lack of room; the keyword shortcuts still reach it.
+Static screens (sizes, shipping, payment, returns...) are `text` nodes in the business's menu file ([ADR-0007](adr/0007-configurable-menu-with-codes.md)); the catalog screens above exist only when the menu has a `catalog` node. Every option also has a **code** that can be typed from any screen (`0` = main menu). On the 3-button product detail screen "Contáctanos" is omitted for lack of room; the keyword shortcuts still reach it.
 
 ## 4.4 State model
 

@@ -79,10 +79,7 @@ async def test_conversation_state_round_trips_and_updates(tmp_path: Path) -> Non
 
 
 async def test_catalog_queries_and_seed_are_idempotent(tmp_path: Path) -> None:
-    from tee_concierge.infrastructure.persistence.catalog_repository import (
-        SqlCatalogRepository,
-        SqlFaqRepository,
-    )
+    from tee_concierge.infrastructure.persistence.catalog_repository import SqlCatalogRepository
     from tee_concierge.seed import seed
 
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path}/catalog.db")
@@ -101,8 +98,6 @@ async def test_catalog_queries_and_seed_are_idempotent(tmp_path: Path) -> None:
     variants = await catalog.list_variants(products[0].id)
     assert {v.size for v in variants} == {"S", "M", "L", "XL"}
     assert await catalog.get_product(99999) is None
-    assert await SqlFaqRepository(sessions).get("shipping") is not None
-    assert await SqlFaqRepository(sessions).get("nope") is None
     await engine.dispose()
 
 

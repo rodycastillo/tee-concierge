@@ -2,19 +2,21 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from tee_concierge.application.content.store import StoreInfo
 from tee_concierge.application.engine.engine import SESSION_TIMEOUT, MenuEngine
 from tee_concierge.application.engine.routing import decode, encode, normalize
+from tee_concierge.application.menu.builder import Menu, build_menu
+from tee_concierge.application.menu.config import MenuConfig
 from tee_concierge.domain.messaging import InboundMessage, MessageType, Reply
-from tests.fakes import (
-    InMemoryCatalog,
-    InMemoryConversationRepository,
-    InMemoryFaq,
-    RecordingUsage,
-)
+from tee_concierge.infrastructure.menu.loader import load_menu
+from tests.fakes import InMemoryCatalog, InMemoryConversationRepository, RecordingUsage
 
 PHONE = "51911111111"
-STORE = StoreInfo(name="Tee Concierge", contact_phone="51943713293", hours="Lun a Sáb 10-19")
+MENU = load_menu(
+    "examples/tshirt-store/menu.yaml",
+    name="Tee Concierge",
+    contact_phone="51943713293",
+    hours="Lun a Sáb 10-19",
+)
 T0 = datetime(2026, 10, 4, 12, 0, tzinfo=UTC)
 
 
@@ -50,14 +52,7 @@ def usage() -> RecordingUsage:
 
 @pytest.fixture
 def engine(clock: Clock, usage: RecordingUsage) -> MenuEngine:
-    return MenuEngine(
-        InMemoryConversationRepository(),
-        STORE,
-        InMemoryCatalog(),
-        InMemoryFaq({"shipping": "Envíos a todo Lima en 24h"}),
-        usage,
-        clock=clock,
-    )
+    return MenuEngine(InMemoryConversationRepository(), MENU, InMemoryCatalog(), usage, clock=clock)
 
 
 async def test_first_message_opens_the_main_menu_whatever_it_says(engine: MenuEngine) -> None:
@@ -81,14 +76,14 @@ async def test_tapping_an_option_navigates_and_offers_navigation_back(engine: Me
 
     reply = await engine.reply_to(_tap(encode("shipping")))
 
-    assert "Lima en 24h" in reply.body  # editable FAQ text wins over the default
+    assert "24 a 48 horas" in reply.body
     assert _ids(reply) == [encode("main"), encode("contact")]
 
 
 async def test_keywords_jump_to_nodes_ignoring_accents_and_case(engine: MenuEngine) -> None:
     await engine.reply_to(_text("hola"))
 
-    assert "Lima en 24h" in (await engine.reply_to(_text("¿Cuánto cuesta el ENVÍO?"))).body
+    assert "24 a 48 horas" in (await engine.reply_to(_text("¿Cuánto cuesta el ENVÍO?"))).body
     assert "Formas de pago" in (await engine.reply_to(_text("aceptan yape?"))).body
     assert "Contáctanos" in (await engine.reply_to(_text("quiero hablar con un asesor"))).body
 
@@ -112,7 +107,7 @@ async def test_unrecognized_text_reshows_the_current_menu(engine: MenuEngine) ->
 
     reply = await engine.reply_to(_text("blablabla"))
 
-    assert reply.body.startswith("No te entendí") and "Lima en 24h" in reply.body
+    assert reply.body.startswith("No te entendí") and "24 a 48 horas" in reply.body
     assert _ids(reply) == [encode("main"), encode("contact")]
 
 
@@ -189,9 +184,8 @@ async def test_visits_are_recorded_per_screen(engine: MenuEngine, usage: Recordi
 async def test_a_usage_outage_never_breaks_the_conversation(clock: Clock) -> None:
     engine = MenuEngine(
         InMemoryConversationRepository(),
-        STORE,
+        MENU,
         InMemoryCatalog(),
-        InMemoryFaq(),
         RecordingUsage(fail=True),
         clock=clock,
     )
@@ -202,21 +196,24 @@ async def test_a_usage_outage_never_breaks_the_conversation(clock: Clock) -> Non
 
 
 async def test_a_screen_that_cannot_render_falls_back_to_a_safe_reply(clock: Clock) -> None:
-    class BrokenFaq:
-        async def get(self, topic: str) -> str | None:
-            return "x" * 5000  # would violate WhatsApp's 1024-char body limit
-
+    too_long = "x" * 5000  # would violate WhatsApp's 1024-char body limit
+    broken: Menu = build_menu(
+        MenuConfig.model_validate(
+            {
+                "business": {"name": "Demo", "contact_phone": "51900000000"},
+                "menu": [
+                    {"id": "long", "type": "text", "title": "Largo", "body": too_long},
+                    {"id": "contact", "type": "contact", "title": "Contacto"},
+                ],
+            }
+        )
+    )
     engine = MenuEngine(
-        InMemoryConversationRepository(),
-        STORE,
-        InMemoryCatalog(),
-        BrokenFaq(),
-        RecordingUsage(),
-        clock=clock,
+        InMemoryConversationRepository(), broken, InMemoryCatalog(), RecordingUsage(), clock=clock
     )
     await engine.reply_to(_text("hola"))
 
-    reply = await engine.reply_to(_tap(encode("shipping")))
+    reply = await engine.reply_to(_tap(encode("long")))
 
     assert "Tuvimos un problema" in reply.body
     assert _ids(reply) == [encode("main"), encode("contact")]

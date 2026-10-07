@@ -102,10 +102,3 @@ class NodeVisitRow(Base):
 
     node: Mapped[str] = mapped_column(String(64), primary_key=True)
     visits: Mapped[int] = mapped_column(BigInteger().with_variant(Integer(), "sqlite"), default=0)
-
-
-class FaqRow(Base):
-    __tablename__ = "faq_entries"
-
-    topic: Mapped[str] = mapped_column(String(40), primary_key=True)
-    body: Mapped[str] = mapped_column(Text)
